@@ -1,21 +1,17 @@
-export type SocialAccountKey = {
-  provider: 'google' | 'kakao' | 'naver';
-  subject: string;
-};
-
-export type User = {
-  id: string;
-};
-
-export interface SocialUserRepository {
-  findBySocialAccount(key: SocialAccountKey): Promise<User | null>;
-  createWithSocialAccount(key: SocialAccountKey): Promise<User>;
-}
+import { SocialUserRepository } from '@users/application/ports/social-user.repository.js';
+import { SocialAccountKey } from '@users/domain/social-account-key.js';
+import { User } from '@users/domain/user.js';
 
 export class FindOrCreateSocialUserUseCase {
   constructor(private readonly repository: SocialUserRepository) {}
 
-  async execute(_key: SocialAccountKey): Promise<User> {
-    throw new Error('Not implemented');
+  async execute(key: SocialAccountKey): Promise<User> {
+    const user = await this.repository.findBySocialAccount(key);
+
+    if (user === null) {
+      throw new Error('Social user creation is not implemented');
+    }
+
+    return user;
   }
 }
