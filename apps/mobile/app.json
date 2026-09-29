@@ -23,13 +23,16 @@
       "favicon": "./assets/favicon.png"
     },
     "plugins": [
-      ["expo-sharing", {
-        "android": {
-          "enabled": true,
-          "singleShareMimeTypes": ["text/plain"],
-          "multipleShareMimeTypes": []
+      [
+        "expo-sharing",
+        {
+          "android": {
+            "enabled": false,
+            "singleShareMimeTypes": ["text/plain"],
+            "multipleShareMimeTypes": []
+          }
         }
-      }]
+      ]
     ]
   }
 }
