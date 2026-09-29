@@ -1,0 +1,35 @@
+buildscript {
+  repositories {
+    google()
+    mavenCentral()
+  }
+  dependencies {
+    classpath("com.google.devtools.ksp:symbol-processing-gradle-plugin:2.1.20-2.0.1")
+  }
+}
+
+plugins {
+  id 'com.android.library'
+  id 'expo-module-gradle-plugin'
+}
+
+apply plugin: "com.google.devtools.ksp"
+
+group = 'expo.modules.latershare'
+version = '0.1.0'
+
+android {
+  namespace "expo.modules.latershare"
+  defaultConfig {
+    versionCode 1
+    versionName "0.1.0"
+  }
+  lintOptions {
+    abortOnError false
+  }
+}
+
+dependencies {
+  implementation("androidx.room:room-runtime:2.8.4")
+  ksp("androidx.room:room-compiler:2.8.4")
+}

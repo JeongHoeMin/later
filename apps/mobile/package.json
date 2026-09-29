@@ -5,6 +5,7 @@
   "dependencies": {
     "expo": "~57.0.25",
     "expo-dev-client": "~57.0.19",
+    "expo-sharing": "~57.0.22",
     "expo-status-bar": "~57.0.1",
     "react": "19.2.3",
     "react-native": "0.86.3"
@@ -19,8 +20,10 @@
     "format": "prettier --write . --ignore-path ../../.prettierignore",
     "format:check": "prettier --check . --ignore-path ../../.prettierignore",
     "start": "expo start --dev-client",
-    "android": "expo run:android",
-    "ios": "expo run:ios"
+    "dev:android": "expo run:android",
+    "dev:ios": "expo run:ios",
+    "prebuild:android": "expo prebuild --platform android",
+    "prebuild:ios": "expo prebuild --platform ios"
   },
   "private": true
 }
