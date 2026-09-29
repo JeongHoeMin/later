@@ -8,10 +8,10 @@ export class FindOrCreateSocialUserUseCase {
   async execute(key: SocialAccountKey): Promise<User> {
     const user = await this.repository.findBySocialAccount(key);
 
-    if (user === null) {
-      throw new Error('Social user creation is not implemented');
+    if (user !== null) {
+      return user;
     }
 
-    return user;
+    return this.repository.createWithSocialAccount(key);
   }
 }
