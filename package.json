@@ -5,8 +5,10 @@
   "scripts": {
     "dev:api": "pnpm --filter api start:dev",
     "dev:mobile": "pnpm --filter mobile start",
-    "dev:android": "pnpm --filter mobile android",
-    "dev:ios": "pnpm --filter mobile ios",
+    "dev:android": "pnpm --filter mobile dev:android",
+    "dev:ios": "pnpm --filter mobile dev:ios",
+    "prebuild:android": "pnpm --filter mobile prebuild:android",
+    "prebuild:ios": "pnpm --filter mobile prebuild:ios",
     "build:api": "pnpm --filter api build",
     "lint": "eslint .",
     "lint:fix": "eslint . --fix",
