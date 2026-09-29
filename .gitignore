@@ -1,3 +1,16 @@
+.claude/
+.vscode/
+
+.idea/
+
+apps/api/dist
+
+apps/mobile/.expo
+apps/mobile/dist
+
+.DS_Store
+Thumbs.db
+
 # Logs
 logs
 *.log
