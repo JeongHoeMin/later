@@ -23,4 +23,28 @@ describe('FindOrCreateSocialUserUseCase', () => {
     });
     expect(repository.createWithSocialAccount).not.toHaveBeenCalled();
   });
+
+  it('연결된 회원이 없으면 소셜 계정과 함께 회원을 생성하고 반환한다', async () => {
+    const key = {
+      provider: 'google' as const,
+      subject: 'new-google-user',
+    };
+
+    const createdUser = { id: 'user-2' };
+
+    const repository = {
+      findBySocialAccount: vi.fn().mockResolvedValue(null),
+      createWithSocialAccount: vi.fn().mockResolvedValue(createdUser),
+    };
+
+    const useCase = new FindOrCreateSocialUserUseCase(repository);
+
+    const result = await useCase.execute(key);
+
+    expect(result).toEqual(createdUser);
+    expect(repository.findBySocialAccount).toHaveBeenCalledWith(key);
+    expect(repository.createWithSocialAccount).toHaveBeenCalledExactlyOnceWith(
+      key,
+    );
+  });
 });
