@@ -1,1 +1,1 @@
-export {savedItemSchema, SavedItem} from './saved-item';
+export { savedItemSchema, SavedItem } from './saved-item';
