@@ -77,4 +77,40 @@ describe('PrismaSocialUserRepository', () => {
       });
     }
   });
+
+  it('회원을 생성하면 소셜 계정도 저장되어 해당 회원을 조회할 수 있다.', async () => {
+    const key = {
+      provider: 'kakao' as const,
+      subject: randomUUID(),
+    };
+
+    try {
+      const createdUser = await repository.createWithSocialAccount(key);
+
+      const savedAccount = await prisma.socialAccount.findUnique({
+        where: {
+          provider_subject: key,
+        },
+        include: {
+          user: true,
+        },
+      });
+
+      expect(savedAccount).not.toBeNull();
+      expect(savedAccount?.userId).toBe(createdUser.id);
+      expect(savedAccount?.user.id).toBe(createdUser.id);
+
+      const foundUser = await repository.findBySocialAccount(key);
+
+      expect(foundUser).toEqual(createdUser);
+    } finally {
+      await prisma.user.deleteMany({
+        where: {
+          socialAccounts: {
+            some: key,
+          },
+        },
+      });
+    }
+  });
 });
