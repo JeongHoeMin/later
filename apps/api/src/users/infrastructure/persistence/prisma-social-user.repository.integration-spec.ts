@@ -1,4 +1,4 @@
-import { afterAll, beforeAll, describe, expect } from 'vitest';
+import { afterAll, beforeAll, describe, expect, vi } from 'vitest';
 import { PrismaSocialUserRepository } from '@users/infrastructure/persistence/prisma-social-user.repository.js';
 import { config } from 'dotenv';
 import { PrismaPg } from '@prisma/adapter-pg';

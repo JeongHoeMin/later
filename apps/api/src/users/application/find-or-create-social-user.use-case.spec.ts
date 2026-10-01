@@ -1,5 +1,6 @@
 import { describe, expect, vi } from 'vitest';
 import { FindOrCreateSocialUserUseCase } from '@users/application/find-or-create-social-user.use-case.js';
+import { SocialAccountAlreadyExistsError } from '@users/domain/errors/social-account-already-exists.error.js';
 
 describe('FindOrCreateSocialUserUseCase', () => {
   it('연결된 회원이 있으면 새로 생성하지 않고 기존 회원을 반환한다.', async () => {
@@ -43,6 +44,36 @@ describe('FindOrCreateSocialUserUseCase', () => {
 
     expect(result).toEqual(createdUser);
     expect(repository.findBySocialAccount).toHaveBeenCalledWith(key);
+    expect(repository.createWithSocialAccount).toHaveBeenCalledExactlyOnceWith(
+      key,
+    );
+  });
+
+  it('생성 중 소셜 계정이 중복되면 다시 조회한 회원을 반환한다.', async () => {
+    const key = {
+      provider: 'google' as const,
+      subject: 'google-user-123',
+    };
+
+    const existingUser = { id: 'user-created-by-another-request' };
+
+    const repository = {
+      findBySocialAccount: vi
+        .fn()
+        .mockResolvedValueOnce(null)
+        .mockResolvedValueOnce(existingUser),
+      createWithSocialAccount: vi
+        .fn()
+        .mockRejectedValue(new SocialAccountAlreadyExistsError()),
+    };
+
+    const useCase = new FindOrCreateSocialUserUseCase(repository);
+
+    const result = await useCase.execute(key);
+
+    expect(result).toEqual(existingUser);
+    expect(repository.findBySocialAccount).toHaveBeenCalledTimes(2);
+    expect(repository.findBySocialAccount).toHaveBeenNthCalledWith(2, key);
     expect(repository.createWithSocialAccount).toHaveBeenCalledExactlyOnceWith(
       key,
     );
