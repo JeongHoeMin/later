@@ -26,7 +26,19 @@ export class PrismaSocialUserRepository implements SocialUserRepository {
     return account?.user ?? null;
   }
 
-  createWithSocialAccount(_key: SocialAccountKey): Promise<User> {
-    throw new Error('Not implemented');
+  createWithSocialAccount(key: SocialAccountKey): Promise<User> {
+    return this.prisma.user.create({
+      data: {
+        socialAccounts: {
+          create: {
+            provider: key.provider,
+            subject: key.subject,
+          },
+        },
+      },
+      select: {
+        id: true,
+      },
+    });
   }
 }
