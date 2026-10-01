@@ -22,7 +22,11 @@
 {
   "user": {
     "id": "회원 UUID"
-  }
+  },
+  "accessToken": "서비스 Access Token",
+  "refreshToken": "서비스 Refresh Token",
+  "tokenType": "Bearer",
+  "expiresIn": 900
 }
 ```
 
@@ -30,4 +34,6 @@
 요청 검증 실패는 400과 `BAD_REQUEST`를 반환하며 details에 검증 메시지를 포함한다.
 예상하지 못한 오류는 공통 필터가 내부 내용을 숨긴 500 응답으로 처리한다.
 
-현재 응답에는 서비스 토큰이나 세션이 포함되지 않는다. 로그인 상태 유지는 후속 작업에서 구현한다.
+Access Token은 15분, 로그인 세션은 30일간 유효하다. Refresh Token은 32바이트 무작위 값이며 DB에는 SHA-256 해시만 저장한다.
+세션 저장이 완료된 뒤 응답한다. 로그인마다 새 세션을 생성해 여러 기기를 지원한다.
+Refresh Token으로 갱신하는 경로와 로그아웃은 후속 작업에서 구현한다.

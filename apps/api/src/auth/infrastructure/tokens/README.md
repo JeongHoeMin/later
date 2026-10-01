@@ -1,7 +1,7 @@
 # Access Token
 
 `AccessTokenModule`을 소비자 모듈에서 import하면 토큰 발급·검증 포트와 `AccessTokenGuard`를 사용할 수 있다.
-현재 로그인 응답 연결은 후속 단계에서 진행한다.
+AuthModule은 이 모듈을 사용하며, 로그인 성공 시 Access Token과 Refresh Token을 발급한다.
 
 ## 설정
 

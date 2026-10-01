@@ -7,20 +7,23 @@ import {
   Post,
   UnauthorizedException,
 } from '@nestjs/common';
-import { SocialLoginUseCase } from '@auth/application/social-login.use-case.js';
+import {
+  SocialSignInUseCase,
+  type SocialSignInResult,
+} from '@auth/application/social-sign-in.use-case.js';
 import { SocialAuthenticationFailedError } from '@auth/domain/errors/social-authentication-failed.error.js';
 import {
   SocialLoginRequestPipe,
   type SocialLoginRequest,
 } from './social-login-request.pipe.js';
 
-export type SocialLoginResponse = { user: { id: string } };
+export type SocialLoginResponse = SocialSignInResult;
 
 @Controller('auth/social')
 export class SocialLoginController {
   constructor(
-    @Inject(SocialLoginUseCase)
-    private readonly loginUseCase: SocialLoginUseCase,
+    @Inject(SocialSignInUseCase)
+    private readonly loginUseCase: SocialSignInUseCase,
   ) {}
 
   @Post('login')
@@ -29,8 +32,7 @@ export class SocialLoginController {
     @Body(SocialLoginRequestPipe) request: SocialLoginRequest,
   ): Promise<SocialLoginResponse> {
     try {
-      const user = await this.loginUseCase.execute(request);
-      return { user: { id: user.id } };
+      return await this.loginUseCase.execute(request);
     } catch (error: unknown) {
       if (error instanceof SocialAuthenticationFailedError) {
         throw new UnauthorizedException({

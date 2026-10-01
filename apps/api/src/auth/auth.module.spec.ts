@@ -1,6 +1,6 @@
 import { Test } from '@nestjs/testing';
 import { LoginTicket, OAuth2Client } from 'google-auth-library';
-import { afterEach, describe, expect, it, vi } from 'vitest';
+import { beforeEach, afterEach, describe, expect, it, vi } from 'vitest';
 import { AuthModule } from './auth.module.js';
 import { PrismaClient } from '@db/client.js';
 import { SOCIAL_USER_REPOSITORY } from '@users/application/ports/social-user.repository.js';
@@ -16,6 +16,12 @@ function builder() {
 }
 
 describe('AuthModule', () => {
+  beforeEach(() =>
+    vi.stubEnv(
+      'ACCESS_TOKEN_SECRET',
+      'test-only-access-secret-with-at-least-32-bytes',
+    ),
+  );
   afterEach(() => vi.unstubAllEnvs());
 
   it.each([undefined, '', '   '])(
