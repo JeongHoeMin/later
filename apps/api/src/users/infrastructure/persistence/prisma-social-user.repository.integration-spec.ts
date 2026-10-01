@@ -49,4 +49,32 @@ describe('PrismaSocialUserRepository', () => {
 
     expect(result).toBeNull();
   });
+
+  it('등록된 소셜 계정을 조회하면 연결된 회원을 반환한다.', async () => {
+    const key = {
+      provider: 'google' as const,
+      subject: randomUUID(),
+    };
+
+    const savedUser = await prisma.user.create({
+      data: {
+        socialAccounts: {
+          create: key,
+        },
+      },
+      select: {
+        id: true,
+      },
+    });
+
+    try {
+      const result = await repository.findBySocialAccount(key);
+
+      expect(result).toEqual({ id: savedUser.id });
+    } finally {
+      await prisma.user.delete({
+        where: { id: savedUser.id },
+      });
+    }
+  });
 });
