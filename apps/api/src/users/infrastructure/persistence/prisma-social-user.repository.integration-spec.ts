@@ -4,6 +4,7 @@ import { config } from 'dotenv';
 import { PrismaPg } from '@prisma/adapter-pg';
 import { randomUUID } from 'node:crypto';
 import { PrismaClient } from '@db/client.js';
+import { SocialAccountAlreadyExistsError } from '@users/domain/errors/social-account-already-exists.error.js';
 
 describe('PrismaSocialUserRepository', () => {
   let prisma: PrismaClient;
@@ -127,9 +128,7 @@ describe('PrismaSocialUserRepository', () => {
 
       await expect(
         repository.createWithSocialAccount(key),
-      ).rejects.toMatchObject({
-        code: 'P2002',
-      });
+      ).rejects.toBeInstanceOf(SocialAccountAlreadyExistsError);
 
       expect(await prisma.user.count()).toBe(countBefore);
 
