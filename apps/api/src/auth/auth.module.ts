@@ -4,11 +4,13 @@ import { UsersModule } from '@users/users.module.js';
 import { FindOrCreateSocialUserUseCase } from '@users/application/find-or-create-social-user.use-case.js';
 import { SocialLoginUseCase } from '@auth/application/social-login.use-case.js';
 import { GoogleAuthProvider } from '@auth/infrastructure/google/google-auth-provider.js';
+import { SocialLoginController } from '@auth/presentation/http/social-login.controller.js';
 
 const GOOGLE_CLIENT_ID = Symbol('GoogleClientId');
 
 @Module({
   imports: [UsersModule],
+  controllers: [SocialLoginController],
   providers: [
     {
       provide: GOOGLE_CLIENT_ID,
