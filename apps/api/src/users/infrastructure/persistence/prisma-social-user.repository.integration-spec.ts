@@ -113,4 +113,31 @@ describe('PrismaSocialUserRepository', () => {
       });
     }
   });
+
+  it('동일 소셜 계정의 중복 생성이 실패하면 새 회원도 남지 않는다', async () => {
+    const key = {
+      provider: 'naver' as const,
+      subject: randomUUID(),
+    };
+
+    const existingUser = await repository.createWithSocialAccount(key);
+
+    try {
+      const countBefore = await prisma.user.count();
+
+      await expect(
+        repository.createWithSocialAccount(key),
+      ).rejects.toMatchObject({
+        code: 'P2002',
+      });
+
+      expect(await prisma.user.count()).toBe(countBefore);
+
+      expect(await repository.findBySocialAccount(key)).toEqual(existingUser);
+    } finally {
+      await prisma.user.delete({
+        where: { id: existingUser.id },
+      });
+    }
+  });
 });
