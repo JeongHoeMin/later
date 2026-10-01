@@ -6,6 +6,9 @@ import { PrismaClient } from '@db/client.js';
 import { AuthModule } from './auth.module.js';
 import { GoogleAuthProvider } from './infrastructure/google/google-auth-provider.js';
 import { SocialSignInUseCase } from './application/social-sign-in.use-case.js';
+import { RefreshSessionUseCase } from './application/refresh-session.use-case.js';
+import { LogoutSessionUseCase } from './application/logout-session.use-case.js';
+import { InvalidRefreshTokenError } from './domain/errors/invalid-refresh-token.error.js';
 import {
   ACCESS_TOKEN_VERIFIER,
   type AccessTokenVerifier,
@@ -69,6 +72,20 @@ describe('AuthModule integration', () => {
           .get<AccessTokenVerifier>(ACCESS_TOKEN_VERIFIER)
           .verify(first.accessToken),
       ).resolves.toEqual({ userId: first.user.id });
+      const refresh = module.get(RefreshSessionUseCase);
+      const renewed = await refresh.execute(first.refreshToken);
+      expect(renewed.refreshToken).not.toBe(first.refreshToken);
+      await expect(refresh.execute(first.refreshToken)).rejects.toBeInstanceOf(
+        InvalidRefreshTokenError,
+      );
+      await expect(
+        refresh.execute(renewed.refreshToken),
+      ).rejects.toBeInstanceOf(InvalidRefreshTokenError);
+      const other = await refresh.execute(second.refreshToken);
+      await module.get(LogoutSessionUseCase).execute(other.refreshToken);
+      await expect(refresh.execute(other.refreshToken)).rejects.toBeInstanceOf(
+        InvalidRefreshTokenError,
+      );
     } finally {
       try {
         await prisma?.user.deleteMany({

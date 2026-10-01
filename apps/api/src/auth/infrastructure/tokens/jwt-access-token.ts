@@ -6,6 +6,7 @@ import type {
 } from '@auth/application/ports/access-token.js';
 import { SignJWT, jwtVerify, errors } from 'jose';
 import { InvalidAccessTokenError } from '@auth/domain/errors/invalid-access-token.error.js';
+import { randomUUID } from 'node:crypto';
 
 export class JwtAccessToken implements AccessTokenIssuer, AccessTokenVerifier {
   private readonly key: Uint8Array;
@@ -25,6 +26,7 @@ export class JwtAccessToken implements AccessTokenIssuer, AccessTokenVerifier {
     const accessToken = await new SignJWT({})
       .setProtectedHeader({ alg: 'HS256', typ: 'at+jwt' })
       .setSubject(userId)
+      .setJti(randomUUID())
       .setIssuer('later-api')
       .setAudience('later-mobile')
       .setIssuedAt(now)

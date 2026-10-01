@@ -24,13 +24,45 @@ import { SecureRefreshTokenGenerator } from './infrastructure/tokens/secure-refr
 import { PrismaAuthSessionRepository } from './infrastructure/persistence/prisma-auth-session.repository.js';
 import { IssueSessionUseCase } from './application/issue-session.use-case.js';
 import { SocialSignInUseCase } from './application/social-sign-in.use-case.js';
+import {
+  REFRESH_SESSION_REPOSITORY,
+  type RefreshSessionRepository,
+} from './application/ports/refresh-session.repository.js';
+import { RefreshSessionUseCase } from './application/refresh-session.use-case.js';
+import { LogoutSessionUseCase } from './application/logout-session.use-case.js';
+import { SessionController } from './presentation/http/session.controller.js';
 
 const GOOGLE_CLIENT_ID = Symbol('GoogleClientId');
 
 @Module({
   imports: [UsersModule, PrismaModule, AccessTokenModule],
-  controllers: [SocialLoginController],
+  controllers: [SocialLoginController, SessionController],
   providers: [
+    {
+      provide: REFRESH_SESSION_REPOSITORY,
+      useExisting: AUTH_SESSION_REPOSITORY,
+    },
+    {
+      provide: RefreshSessionUseCase,
+      inject: [
+        ACCESS_TOKEN_ISSUER,
+        REFRESH_TOKEN_GENERATOR,
+        REFRESH_SESSION_REPOSITORY,
+      ],
+      useFactory: (
+        access: AccessTokenIssuer,
+        tokens: RefreshTokenGenerator,
+        sessions: RefreshSessionRepository,
+      ) => new RefreshSessionUseCase(access, tokens, sessions),
+    },
+    {
+      provide: LogoutSessionUseCase,
+      inject: [REFRESH_TOKEN_GENERATOR, REFRESH_SESSION_REPOSITORY],
+      useFactory: (
+        tokens: RefreshTokenGenerator,
+        sessions: RefreshSessionRepository,
+      ) => new LogoutSessionUseCase(tokens, sessions),
+    },
     {
       provide: REFRESH_TOKEN_GENERATOR,
       useFactory: () => new SecureRefreshTokenGenerator(),

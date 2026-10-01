@@ -36,4 +36,18 @@
 
 Access Token은 15분, 로그인 세션은 30일간 유효하다. Refresh Token은 32바이트 무작위 값이며 DB에는 SHA-256 해시만 저장한다.
 세션 저장이 완료된 뒤 응답한다. 로그인마다 새 세션을 생성해 여러 기기를 지원한다.
-Refresh Token으로 갱신하는 경로와 로그아웃은 후속 작업에서 구현한다.
+## 토큰 갱신과 로그아웃
+
+`POST /auth/token/refresh`, `POST /auth/logout`은 다음 본문을 받는다.
+
+```json
+{ "refreshToken": "서비스 Refresh Token" }
+```
+
+갱신 성공은 200과 새 accessToken, refreshToken, tokenType, expiresIn을 반환한다.
+기존 Refresh Token은 사용 완료로 표시하고 같은 세션에 새 해시를 저장한다. 세션의 30일 만료 시점은 연장하지 않는다.
+만료·폐기·알 수 없는 토큰은 401 / INVALID_REFRESH_TOKEN으로 응답한다.
+사용한 토큰을 다시 제출하면 해당 세션을 폐기한다. 갱신 요청은 앱에서 하나씩 실행하고 성공 후 새 Refresh Token으로 교체해야 한다.
+
+로그아웃은 해당 세션을 폐기하고 빈 204 응답을 반환한다. 이미 폐기했거나 알 수 없는 토큰이어도 204를 반환한다.
+다른 기기의 세션은 유지한다. 이미 발급한 Access Token은 최대 15분의 남은 만료 시간까지 유효하다.

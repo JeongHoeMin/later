@@ -28,6 +28,14 @@ describe('JwtAccessToken', () => {
   const tokens = new JwtAccessToken(secret);
   afterEach(() => vi.useRealTimers());
 
+  it('같은 시각에 같은 회원에게 발급해도 서로 다른 토큰을 생성한다', async () => {
+    vi.useFakeTimers();
+    vi.setSystemTime(new Date('2026-10-02T00:00:00Z'));
+    const first = await tokens.issue('user-123');
+    const second = await tokens.issue('user-123');
+    expect(second.accessToken).not.toBe(first.accessToken);
+  });
+
   it('회원 ID로 15분간 유효한 Access Token을 발급한다', async () => {
     vi.useFakeTimers();
     vi.setSystemTime(new Date('2026-10-02T00:00:00Z'));
