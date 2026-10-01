@@ -1,4 +1,6 @@
 import { Module } from '@nestjs/common';
+import { APP_FILTER, HttpAdapterHost } from '@nestjs/core';
+import { ApiExceptionFilter } from './common/http/api-exception.filter.js';
 import { createObserveModule } from '@nestjs/observe';
 import { AppController } from './app.controller.js';
 import { AppService } from './app.service.js';
@@ -16,6 +18,14 @@ export const { ObserveModule, ObserveInstrument } = createObserveModule();
     }),
   ],
   controllers: [AppController],
-  providers: [AppService],
+  providers: [
+    AppService,
+    {
+      provide: APP_FILTER,
+      inject: [HttpAdapterHost],
+      useFactory: (adapterHost: HttpAdapterHost) =>
+        new ApiExceptionFilter(adapterHost),
+    },
+  ],
 })
 export class AppModule {}
