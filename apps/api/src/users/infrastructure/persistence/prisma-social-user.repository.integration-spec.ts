@@ -5,6 +5,7 @@ import { PrismaPg } from '@prisma/adapter-pg';
 import { randomUUID } from 'node:crypto';
 import { PrismaClient } from '@db/client.js';
 import { SocialAccountAlreadyExistsError } from '@users/domain/errors/social-account-already-exists.error.js';
+import { FindOrCreateSocialUserUseCase } from '@users/application/find-or-create-social-user.use-case.js';
 
 describe('PrismaSocialUserRepository', () => {
   let prisma: PrismaClient;
@@ -111,6 +112,61 @@ describe('PrismaSocialUserRepository', () => {
             some: key,
           },
         },
+      });
+    }
+  });
+
+  it('동일 소셜 계정으로 동시에 가입하면 두 요청이 같은 회원을 반환한다', async () => {
+    const key = {
+      provider: 'google' as const,
+      subject: randomUUID(),
+    };
+    const countBefore = await prisma.user.count();
+    const findBySocialAccount = repository.findBySocialAccount.bind(repository);
+    let releaseInitialReads!: () => void;
+    const initialReadsCompleted = new Promise<void>((resolve) => {
+      releaseInitialReads = resolve;
+    });
+    let completedInitialReads = 0;
+
+    // Both requests perform real DB reads before either starts creating a user.
+    const lookupSpy = vi
+      .spyOn(repository, 'findBySocialAccount')
+      .mockImplementationOnce(async (accountKey) => {
+        const user = await findBySocialAccount(accountKey);
+        if (++completedInitialReads === 2) releaseInitialReads();
+        await initialReadsCompleted;
+        return user;
+      })
+      .mockImplementationOnce(async (accountKey) => {
+        const user = await findBySocialAccount(accountKey);
+        if (++completedInitialReads === 2) releaseInitialReads();
+        await initialReadsCompleted;
+        return user;
+      });
+
+    try {
+      const useCase = new FindOrCreateSocialUserUseCase(repository);
+      // Wait for both requests, including a failed one, before cleaning up.
+      const results = await Promise.allSettled([
+        useCase.execute(key),
+        useCase.execute(key),
+      ]);
+      const accounts = await prisma.socialAccount.findMany({
+        where: key,
+        select: { user: { select: { id: true } } },
+      });
+
+      expect(accounts).toHaveLength(1);
+      expect(results).toEqual([
+        { status: 'fulfilled', value: accounts[0].user },
+        { status: 'fulfilled', value: accounts[0].user },
+      ]);
+      expect(await prisma.user.count()).toBe(countBefore + 1);
+    } finally {
+      lookupSpy.mockRestore();
+      await prisma.user.deleteMany({
+        where: { socialAccounts: { some: key } },
       });
     }
   });
