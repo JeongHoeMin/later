@@ -78,4 +78,50 @@ describe('FindOrCreateSocialUserUseCase', () => {
       key,
     );
   });
+
+  it('소셜 계정 중복 후 재조회해도 회원이 없으면 원래 오류를 전달한다', async () => {
+    const key = {
+      provider: 'google' as const,
+      subject: 'google-user-123',
+    };
+
+    const duplicateError = new SocialAccountAlreadyExistsError();
+
+    const repository = {
+      findBySocialAccount: vi.fn().mockResolvedValue(null),
+      createWithSocialAccount: vi.fn().mockRejectedValue(duplicateError),
+    };
+
+    const useCase = new FindOrCreateSocialUserUseCase(repository);
+
+    await expect(useCase.execute(key)).rejects.toBe(duplicateError);
+
+    expect(repository.findBySocialAccount).toHaveBeenCalledTimes(2);
+    expect(repository.createWithSocialAccount).toHaveBeenCalledExactlyOnceWith(
+      key,
+    );
+  });
+
+  it('회원 생성 중 일반 오류가 발생하면 재조회 하지 않고 원래 오류를 전달한다.', async () => {
+    const key = {
+      provider: 'kakao' as const,
+      subject: 'kakao-user-123',
+    };
+
+    const databaseError = new Error('Database connection lost');
+
+    const repository = {
+      findBySocialAccount: vi.fn().mockResolvedValue(null),
+      createWithSocialAccount: vi.fn().mockRejectedValue(databaseError),
+    };
+
+    const useCase = new FindOrCreateSocialUserUseCase(repository);
+
+    await expect(useCase.execute(key)).rejects.toBe(databaseError);
+
+    expect(repository.findBySocialAccount).toHaveBeenCalledExactlyOnceWith(key);
+    expect(repository.createWithSocialAccount).toHaveBeenCalledExactlyOnceWith(
+      key,
+    );
+  });
 });
