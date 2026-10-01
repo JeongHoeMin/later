@@ -32,6 +32,14 @@
             "multipleShareMimeTypes": []
           }
         }
+      ],
+      [
+        "expo-splash-screen",
+        {
+          "backgroundColor": "#111827",
+          "image": "./assets/splash-icon.png",
+          "imageWidth": 120
+        }
       ]
     ]
   }
