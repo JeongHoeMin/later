@@ -116,6 +116,54 @@ describe('PrismaSocialUserRepository', () => {
     }
   });
 
+  it('subject가 같아도 제공자가 다르면 별도 회원으로 저장하고 조회한다', async () => {
+    const subject = randomUUID();
+    const providers = ['google', 'kakao', 'naver'] as const;
+    const useCase = new FindOrCreateSocialUserUseCase(repository);
+
+    try {
+      const users = [];
+
+      for (const provider of providers) {
+        users.push(await useCase.execute({ provider, subject }));
+      }
+
+      expect(new Set(users.map((user) => user.id)).size).toBe(3);
+
+      const savedAccounts = await prisma.socialAccount.findMany({
+        where: { subject, provider: { in: [...providers] } },
+        select: { provider: true, userId: true },
+      });
+
+      expect(savedAccounts).toHaveLength(3);
+
+      for (const [index, provider] of providers.entries()) {
+        const key = { provider, subject };
+
+        expect(savedAccounts).toContainEqual({
+          provider,
+          userId: users[index].id,
+        });
+        expect(await repository.findBySocialAccount(key)).toEqual(users[index]);
+        expect(await useCase.execute(key)).toEqual(users[index]);
+      }
+
+      expect(
+        await prisma.socialAccount.count({
+          where: { subject, provider: { in: [...providers] } },
+        }),
+      ).toBe(3);
+    } finally {
+      await prisma.user.deleteMany({
+        where: {
+          socialAccounts: {
+            some: { subject, provider: { in: [...providers] } },
+          },
+        },
+      });
+    }
+  });
+
   it('동일 소셜 계정으로 동시에 가입하면 두 요청이 같은 회원을 반환한다', async () => {
     const key = {
       provider: 'google' as const,
