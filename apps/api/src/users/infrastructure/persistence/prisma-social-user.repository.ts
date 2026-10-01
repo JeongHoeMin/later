@@ -6,8 +6,24 @@ import { User } from '@users/domain/user.js';
 export class PrismaSocialUserRepository implements SocialUserRepository {
   constructor(private readonly prisma: PrismaClient) {}
 
-  findBySocialAccount(_key: SocialAccountKey): Promise<User | null> {
-    throw new Error('Not implemented');
+  async findBySocialAccount(key: SocialAccountKey): Promise<User | null> {
+    const account = await this.prisma.socialAccount.findUnique({
+      where: {
+        provider_subject: {
+          provider: key.provider,
+          subject: key.subject,
+        },
+      },
+      select: {
+        user: {
+          select: {
+            id: true,
+          },
+        },
+      },
+    });
+
+    return account?.user ?? null;
   }
 
   createWithSocialAccount(_key: SocialAccountKey): Promise<User> {
