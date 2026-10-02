@@ -18,10 +18,17 @@ import {
   SocialLoginRequestPipe,
   type SocialLoginRequest,
 } from './social-login-request.pipe.js';
+import { ApiBody, ApiOkResponse, ApiOperation, ApiTags } from '@nestjs/swagger';
+import {
+  ApiAuthErrors,
+  SocialLoginResponseDto,
+  socialLoginRequestSchemas,
+} from './auth-openapi.js';
 
 export type SocialLoginResponse = SocialSignInResult;
 
 @Controller('auth/social')
+@ApiTags('인증')
 export class SocialLoginController {
   constructor(
     @Inject(SocialSignInUseCase)
@@ -30,6 +37,42 @@ export class SocialLoginController {
 
   @Post('login')
   @HttpCode(HttpStatus.OK)
+  @ApiOperation({
+    summary: '소셜 인증 후 회원 연결과 서비스 로그인',
+    description:
+      'Google ID token, Kakao access token, Naver code/state 또는 Apple ID token/loginAttemptId를 검증한다. Apple 시도는 회원·세션 저장 전에 소비되므로 이후 오류·응답 유실 시 새 시도로 시작한다.',
+    security: [],
+  })
+  @ApiBody({
+    required: true,
+    schema: { oneOf: socialLoginRequestSchemas },
+    examples: {
+      google: { value: { provider: 'google', credential: 'GOOGLE_ID_TOKEN' } },
+      kakao: { value: { provider: 'kakao', credential: 'KAKAO_ACCESS_TOKEN' } },
+      naver: {
+        value: {
+          provider: 'naver',
+          credential: 'NAVER_AUTHORIZATION_CODE',
+          state: 'CLIENT_VALIDATED_STATE',
+        },
+      },
+      apple: {
+        value: {
+          provider: 'apple',
+          credential: 'APPLE_ID_TOKEN',
+          loginAttemptId: 'a43a185e-b819-44d7-90ca-e11d218c3145',
+        },
+      },
+    },
+  })
+  @ApiOkResponse({
+    type: SocialLoginResponseDto,
+    description: '신규·기존 회원 모두 동일한 서비스 로그인 응답',
+  })
+  @ApiAuthErrors(
+    'SOCIAL_AUTHENTICATION_FAILED: 잘못된·만료된 인증 정보 또는 Apple 시도 불일치·재사용',
+    true,
+  )
   async login(
     @Body(SocialLoginRequestPipe) request: SocialLoginRequest,
   ): Promise<SocialLoginResponse> {
