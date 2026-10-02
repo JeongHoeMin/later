@@ -123,3 +123,13 @@ Access Token은 15분, 로그인 세션은 30일간 유효하다. Refresh Token�
 
 로그아웃은 해당 세션을 폐기하고 빈 204 응답을 반환한다. 이미 폐기했거나 알 수 없는 토큰이어도 204를 반환한다.
 다른 기기의 세션은 유지한다. 이미 발급한 Access Token은 최대 15분의 남은 만료 시간까지 유효하다.
+
+## 인증된 회원 확인
+
+`GET /auth/me`는 `Authorization: Bearer <서비스 Access Token>`을 요구한다. 로그인 또는 갱신에서 받은 서비스 토큰을 사용하며 제공자 토큰·Refresh Token은 사용할 수 없다.
+
+성공200은 `{ "user": { "id": "검증된 서비스 회원 ID" } }`이며 `Cache-Control: no-store`를 적용한다. 회원 ID는 JWT의 검증된 sub에서만 가져오며 query/body의 userId·subject를 신뢰하지 않는다. 토큰을 응답에 포함하지 않는다.
+
+헤더 누락·형식 오류는401 `AUTHENTICATION_REQUIRED`, 잘못된·만료된 서비스 JWT는401 `INVALID_ACCESS_TOKEN`이며 `WWW-Authenticate: Bearer`를 제공한다. 검증 시스템 오류는 원문을 숨긴500 `INTERNAL_SERVER_ERROR`다.
+
+현재 API는 JWT 인증 결과만 확인한다. DB의 회원 존재·탈퇴 상태·권한이나 세션 폐기를 조회하지 않는다. 로그아웃 직후에도 이미 발급된 Access Token은 만료까지 유효하다. 갱신 후 회원ID를 확인할 때 새 Access Token으로 이 API를 호출한다.

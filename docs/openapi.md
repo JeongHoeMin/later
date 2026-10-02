@@ -30,5 +30,6 @@ Bearer 보안 스키마는 서비스 JWT를 의미한다. 각 API에 표시된 �
 | POST /auth/social/apple/start | 201 시도 ID·nonce·유효기간 | 본문 없음 또는 빈 객체                                 |
 | POST /auth/token/refresh      | 200 새 서비스 토큰         | refreshToken                                           |
 | POST /auth/logout             | 204 본문 없음              | refreshToken                                           |
+| GET /auth/me                  | 200 인증된 회원 ID         | Authorization: Bearer 서비스 Access Token              |
 
 로그인·세션 상세 동작은 [로그인 프로세스](social-login-process.md)와 [HTTP 계약](../apps/api/src/auth/presentation/http/README.md)을 참고한다.

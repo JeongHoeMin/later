@@ -75,6 +75,12 @@ describe('세션 갱신과 로그아웃 (e2e)', () => {
       expiresIn: 900,
     });
     expect(response.body.refreshToken).not.toBe(original.token);
+    const member = await request(app.getHttpServer())
+      .get('/auth/me')
+      .set('Connection', 'keep-alive')
+      .set('Authorization', `Bearer ${response.body.accessToken}`)
+      .expect(200);
+    expect(member.body).toEqual({ user: { id: 'verified-user' } });
     expect(
       (
         await jwtVerify(

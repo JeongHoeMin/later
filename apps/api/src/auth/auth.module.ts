@@ -42,12 +42,18 @@ import {
 import { RefreshSessionUseCase } from './application/refresh-session.use-case.js';
 import { LogoutSessionUseCase } from './application/logout-session.use-case.js';
 import { SessionController } from './presentation/http/session.controller.js';
+import { AuthenticatedUserController } from './presentation/http/authenticated-user.controller.js';
 
 const GOOGLE_CLIENT_ID = Symbol('GoogleClientId');
 
 @Module({
   imports: [UsersModule, PrismaModule, AccessTokenModule],
-  controllers: [SocialLoginController, SessionController, AppleLoginController],
+  controllers: [
+    SocialLoginController,
+    SessionController,
+    AppleLoginController,
+    AuthenticatedUserController,
+  ],
   providers: [
     {
       provide: APPLE_LOGIN_ATTEMPT_REPOSITORY,

@@ -99,6 +99,12 @@ describe('POST /auth/social/login (e2e)', () => {
       { issuer: 'later-api', audience: 'later-mobile' },
     );
     expect(verified.payload.sub).toBe('existing-user');
+    const member = await request(app.getHttpServer())
+      .get('/auth/me')
+      .set('Connection', 'keep-alive')
+      .set('Authorization', `Bearer ${response.body.accessToken}`)
+      .expect(200);
+    expect(member.body).toEqual({ user: { id: 'existing-user' } });
     expect(sessions.create).toHaveBeenCalledWith({
       userId: 'existing-user',
       tokenHash: createHash('sha256')

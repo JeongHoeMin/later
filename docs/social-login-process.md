@@ -56,6 +56,7 @@ provider/credential 및 네이버의 state, Apple의 loginAttemptId 이외의 �
 
 서비스 Refresh Token은 플랫폼 보안 저장소에 보관하고, 이후 보호 API에는 `Authorization: Bearer <서비스 Access Token>`을 사용한다.
 갱신·로그아웃 계약은 [HTTP 계약](../apps/api/src/auth/presentation/http/README.md)을 따른다.
+앱 복원 시 `POST /auth/token/refresh` 성공 후 새 서비스 Access Token으로 `GET /auth/me`를 호출하면 인증된 회원 ID를 얻는다. 이 API는 JWT 검증 결과이며 DB 회원 상태나 로그아웃 세션을 조회하지 않는다. 모바일 호출 구현은 이 세션의 작업 범위가 아니다.
 네이버가 반환한 Access/Refresh Token은 서버의 인증 처리에만 사용하며 모바일 응답과 DB에 저장하지 않는다.
 
 ## 앱 귀속과 로그인 시도 연결은 별개
