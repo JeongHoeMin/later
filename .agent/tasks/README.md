@@ -1,34 +1,17 @@
-# Task 목록
+# Task 조회
 
-새 세션은 이 목록에서 현재 브랜치에 해당하는 Task를 선택하고 네 문서를 순서대로 읽는다.
-서로 다른 브랜치에서 완료된 기능을 현재 브랜치에도 있다고 가정하지 않는다.
+Task의 원본은 현재 checkout의 각 Directory에 있는 네 문서다. 이 파일에는 Task별 상태 표를 수동 관리하지 않는다.
+생성·이름·병렬 작업 규칙은 [Task Identity](../task-identity.md), 코드 컨벤션은 [project.md](../project.md)를 따른다.
 
-| Task                           | 범위                                              | 상태 / 브랜치                     |
-| ------------------------------ | ------------------------------------------------- | --------------------------------- |
-| [TASK-001](TASK-001/task.yaml) | 공통 Agent Workflow와 템플릿 정착; 샘플 구조 검증 | 완료 / docs/agent-workflow → main |
+PowerShell에서 현재 checkout의 Task 파일을 조회한다:
 
-## feat/auth 인수인계
+```powershell
+Get-ChildItem .agent/tasks -Directory |
+  ForEach-Object { Join-Path $_.FullName 'task.yaml' } |
+  Where-Object { Test-Path -LiteralPath $_ } |
+  ForEach-Object { Get-Content -LiteralPath $_ }
+```
 
-현재 브랜치: feat/auth. main의 지침 PR #5를 병합한 후 기존 auth 구현을 아래에 사후 기록했다.
-TASK-003~007은 기존 구현 baseline이다. 과거 RED/REFACTOR 실행 이력이 확인되지 않은 항목은 N/A로 표시하고 현재 재검증과 구분한다.
-TASK-003~007은 TASK-008 추가 전의 기록이다. 현재 지원 provider와 후속 동작은 최신 Task 및 HTTP 계약을 확인한다.
-
-| Task                           | 범위                                                    | 상태                     |
-| ------------------------------ | ------------------------------------------------------- | ------------------------ |
-| [TASK-002](TASK-002/task.yaml) | 기존 작업 기록·인수인계 문서 검증                       | 완료                     |
-| [TASK-003](TASK-003/task.yaml) | 소셜 계정 회원 연결·Prisma·동시 가입                    | 사후 기록·현재 검증 완료 |
-| [TASK-004](TASK-004/task.yaml) | 구글 인증 어댑터·로그인 HTTP                            | 사후 기록·현재 검증 완료 |
-| [TASK-005](TASK-005/task.yaml) | Access Token·인증 Guard                                 | 사후 기록·현재 검증 완료 |
-| [TASK-006](TASK-006/task.yaml) | Refresh 세션·갱신·재사용 탐지·로그아웃                  | 사후 기록·현재 검증 완료 |
-| [TASK-007](TASK-007/task.yaml) | 공통 오류 응답 (main PR #4 병합)                        | 사후 기록·현재 검증 완료 |
-| [TASK-008](TASK-008/task.yaml) | 카카오 인증 어댑터·HTTP provider 확장                   | 완료                     |
-| [TASK-009](TASK-009/task.yaml) | 네이버 서버 코드 교환·HTTP 확장·모바일 로그인 참고 문서 | 완료                     |
-
-## 다음 작업: 승인 대기
-
-TASK-009까지 구글·카카오·네이버 API 인증을 완료했다. 현재 활성 Product Task나 RED 상태 테스트는 없다.
-네이버는 서버의 우리 앱 Client ID·Secret으로 인가 코드를 교환한다. 모바일은 네이버 state를 로그인 시도와 대조한 후 API로 전달해야 한다.
-모바일의 실제 제공자 로그인·SDK·콜백·state/nonce 처리는 아직 구현·검증하지 않았다.
-후속 제안은 모바일 SDK와 Callback URL 선택, 제공자별 로그인 시도 보호 설계·구현 및 실제 앱 인증 검증이다. 시작 전 별도 승인을 받는다.
-[모바일 로그인 참고 문서](../../docs/social-login-process.md)를 읽고 현재 API 계약과 클라이언트 책임을 확인한다.
-feat/auth 작업은 아직 main에 병합하지 않았다. auth 브랜치를 push하거나 PR을 병합하는 것은 별도 승인 범위다.
+브랜치와 status/phase/current_summary/next_action을 확인한 후 해당 Task의 task.yaml → requirement.md → progress.md → verification.md를 읽는다.
+완료 Task의 후속 제안은 각 progress.md와 최종 보고를 참고한다. 다른 브랜치의 구현·검증 상태를 현재 checkout에 있다고 가정하지 않는다.
+Dashboard가 필요하면 이 파일의 수동 표를 추가하는 대신 Task 데이터를 읽어 파생 뷰를 생성한다.

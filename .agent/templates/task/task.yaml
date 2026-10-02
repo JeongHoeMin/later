@@ -1,10 +1,10 @@
-id: TASK-XXX
+id: TASK-<ULID>
 title: '검증 가능한 작업 제목'
 status: pending
 phase: requirement
 priority: normal
-created_at: YYYY-MM-DD
-updated_at: YYYY-MM-DD
+created_at: YYYY-MM-DDTHH:mm:ss+09:00
+updated_at: YYYY-MM-DDTHH:mm:ss+09:00
 current_summary: '요구사항과 승인 범위를 확인한다.'
 next_action: 'requirement.md의 R1/AC를 확인하고 작업 범위와 검증 방법을 설명해 승인을 받는다.'
 blocked_by: null

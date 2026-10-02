@@ -5,10 +5,10 @@ Codex, Claude Code 등 모든 개발 Agent가 따르는 규칙이다. 특정 스
 ## 시작과 승인
 
 1. `git status --short`, 현재 브랜치와 관련 하위 지침을 확인한다. 사용자 변경과 미추적 파일을 보존한다.
-2. [project.md](project.md), [tasks/README.md](tasks/README.md)를 읽는다. 새 세션에서는 미완료 Task를 확인하되 다른 브랜치의 Task를 임의로 실행하지 않는다.
+2. [project.md](project.md), [tasks/README.md](tasks/README.md)를 읽고 현재 checkout의 Task Directory에서 미완료 Task를 확인한다. 다른 브랜치의 Task를 임의로 실행하지 않는다.
 3. 해당 Task의 `task.yaml → requirement.md → progress.md → verification.md`를 읽고 실제 코드·테스트·Git과 대조한다.
 4. 새 작업 세트마다 목표, 범위, 검증 방법을 먼저 설명하고 사용자의 승인을 받는다. 이미 승인된 범위는 재승인 없이 끝까지 수행한다. 기록된 Next Action은 승인 자체가 아니다.
-5. 새 Task는 템플릿 네 파일을 `.agent/tasks/TASK-XXX/`로 복사한다. 기존 ID와 겹치지 않게 선택하고 목록에 추가한다. 승인 근거는 progress.md에 짧게 남긴다.
+5. 새 Task는 [Task Identity와 병렬 작업 규칙](task-identity.md)에 따라 독립적으로 생성한 ULID ID와 slug Directory에 템플릿 네 파일을 복사한다. 승인 근거는 progress.md에 짧게 남긴다. 중앙 목록을 수동 갱신하지 않는다.
 
 ## 개발 순서
 
@@ -42,7 +42,7 @@ Requirement → Acceptance Criteria → Test 설계 → RED → 최소 구현 �
 - 새로운 요구사항은 `DISC-XXX / NEEDS_CONFIRMATION`으로 기록하고 승인 후 정식 R로 승격한다.
 - 결정은 Decision/Reason을 쓰고 중요한 대안만 Alternatives에 남긴다. Observed와 Hypothesis를 구분한다.
 - Blocker에는 원인과 재개 조건을 적는다. 미완료 Next Action은 테스트 ID, 현재 상태, 수정 대상, 재실행 명령, 필요한 승인을 포함한다.
-- completed Task의 next_action은 null이다. 다음 Task 제안은 Task 목록과 최종 보고에 남긴다.
+- completed Task의 next_action은 null이다. 다음 Task 제안은 관련 Task의 progress.md와 최종 보고에 남긴다. 전체 목록은 Task Directory에서 계산한다.
 
 ## 검증과 완료
 

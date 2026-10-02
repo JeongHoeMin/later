@@ -23,3 +23,14 @@
 ## Out of Scope
 
 Production Code, 패키지·설정 변경, 새로운 auth 기능, 기존 모바일 지침 재작성.
+
+## R4 - 병렬 Task Identity 지침과 기존 샘플 이관
+
+2026-10-02 사용자가 docs/agent-workflow에서 지침 수정 커밋, 기존 TASK-001의 새 규칙 이관 커밋, push·PR·main 병합을 명시적으로 승인했다.
+
+- AC-R4-1: 순차 번호 조회 없이 전체 ULID와 slug로 독립 생성하며 기존 TDD·요구사항·검증·완료 규칙을 유지한다.
+- AC-R4-2: 공통 생성 규칙은 task-identity.md 한 곳에 정의하고 Template·진입점과 일치한다.
+- AC-R4-3: 원본은 Task Directory이며 목록은 파생 뷰다. 공유 Dashboard를 수동 편집·커밋하지 않는다.
+- AC-R4-4: 사용자 예외 승인에 따라 이 샘플의 ID·Directory를 이관하고 이전 ID와 과거 생성 시각 미상을 기록한다. 기존 요구사항·실행 이력은 보존한다.
+
+R4 범위에는 문서용 파생 Dashboard를 제외하는 .gitignore 규칙만 포함한다. 제품 패키지·런타임 설정은 변경하지 않는다.

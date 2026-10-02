@@ -158,3 +158,5 @@ dist
 vite.config.js.timestamp-*
 vite.config.ts.timestamp-*
 .vite/
+# Task dashboard is a derived local view; task directories are authoritative.
+.agent/TASKS.md
