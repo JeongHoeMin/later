@@ -36,6 +36,8 @@ describe('POST /auth/social/login (e2e)', () => {
   beforeAll(async () => {
     vi.stubEnv('GOOGLE_CLIENT_ID', 'e2e-client.apps.googleusercontent.com');
     vi.stubEnv('KAKAO_APP_ID', '1234');
+    vi.stubEnv('NAVER_CLIENT_ID', 'test-naver-client');
+    vi.stubEnv('NAVER_CLIENT_SECRET', 'test-naver-secret');
     vi.stubEnv('ACCESS_TOKEN_SECRET', secret);
     const module = await Test.createTestingModule({ imports: [AppModule] })
       .overrideProvider(PrismaClient)

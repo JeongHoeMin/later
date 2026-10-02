@@ -23,6 +23,8 @@ describe('AuthModule integration', () => {
     vi.stubEnv('DATABASE_URL', url);
     vi.stubEnv('GOOGLE_CLIENT_ID', 'test-client');
     vi.stubEnv('KAKAO_APP_ID', '1234');
+    vi.stubEnv('NAVER_CLIENT_ID', 'test-naver-client');
+    vi.stubEnv('NAVER_CLIENT_SECRET', 'test-naver-secret');
     vi.stubEnv(
       'ACCESS_TOKEN_SECRET',
       'test-only-access-secret-with-at-least-32-bytes',

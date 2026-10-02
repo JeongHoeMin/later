@@ -17,12 +17,30 @@ function builder() {
 
 describe('AuthModule', () => {
   beforeEach(() => {
+    vi.stubEnv('NAVER_CLIENT_ID', 'our-naver-client');
+    vi.stubEnv('NAVER_CLIENT_SECRET', 'our-naver-secret');
     vi.stubEnv('KAKAO_APP_ID', '1234');
     vi.stubEnv(
       'ACCESS_TOKEN_SECRET',
       'test-only-access-secret-with-at-least-32-bytes',
     );
   });
+
+  it.each(['NAVER_CLIENT_ID', 'NAVER_CLIENT_SECRET'])(
+    '네이버 설정 %s 누락은 모듈 구성을 거부한다',
+    async (key) => {
+      vi.stubEnv('GOOGLE_CLIENT_ID', clientId);
+      vi.stubEnv(key, '');
+      await expect(
+        builder()
+          .compile()
+          .then(async (module) => {
+            await module.close();
+            return 'compiled';
+          }),
+      ).rejects.toThrow(key);
+    },
+  );
   afterEach(() => {
     vi.unstubAllEnvs();
     vi.unstubAllGlobals();

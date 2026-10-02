@@ -13,20 +13,22 @@
 TASK-003~007은 기존 구현 baseline이다. 과거 RED/REFACTOR 실행 이력이 확인되지 않은 항목은 N/A로 표시하고 현재 재검증과 구분한다.
 TASK-003~007은 TASK-008 추가 전의 기록이다. 현재 지원 provider와 후속 동작은 최신 Task 및 HTTP 계약을 확인한다.
 
-| Task                           | 범위                                   | 상태                     |
-| ------------------------------ | -------------------------------------- | ------------------------ |
-| [TASK-002](TASK-002/task.yaml) | 기존 작업 기록·인수인계 문서 검증      | 완료                     |
-| [TASK-003](TASK-003/task.yaml) | 소셜 계정 회원 연결·Prisma·동시 가입   | 사후 기록·현재 검증 완료 |
-| [TASK-004](TASK-004/task.yaml) | 구글 인증 어댑터·로그인 HTTP           | 사후 기록·현재 검증 완료 |
-| [TASK-005](TASK-005/task.yaml) | Access Token·인증 Guard                | 사후 기록·현재 검증 완료 |
-| [TASK-006](TASK-006/task.yaml) | Refresh 세션·갱신·재사용 탐지·로그아웃 | 사후 기록·현재 검증 완료 |
-| [TASK-007](TASK-007/task.yaml) | 공통 오류 응답 (main PR #4 병합)       | 사후 기록·현재 검증 완료 |
-| [TASK-008](TASK-008/task.yaml) | 카카오 인증 어댑터·HTTP provider 확장  | 완료                     |
+| Task                           | 범위                                                    | 상태                     |
+| ------------------------------ | ------------------------------------------------------- | ------------------------ |
+| [TASK-002](TASK-002/task.yaml) | 기존 작업 기록·인수인계 문서 검증                       | 완료                     |
+| [TASK-003](TASK-003/task.yaml) | 소셜 계정 회원 연결·Prisma·동시 가입                    | 사후 기록·현재 검증 완료 |
+| [TASK-004](TASK-004/task.yaml) | 구글 인증 어댑터·로그인 HTTP                            | 사후 기록·현재 검증 완료 |
+| [TASK-005](TASK-005/task.yaml) | Access Token·인증 Guard                                 | 사후 기록·현재 검증 완료 |
+| [TASK-006](TASK-006/task.yaml) | Refresh 세션·갱신·재사용 탐지·로그아웃                  | 사후 기록·현재 검증 완료 |
+| [TASK-007](TASK-007/task.yaml) | 공통 오류 응답 (main PR #4 병합)                        | 사후 기록·현재 검증 완료 |
+| [TASK-008](TASK-008/task.yaml) | 카카오 인증 어댑터·HTTP provider 확장                   | 완료                     |
+| [TASK-009](TASK-009/task.yaml) | 네이버 서버 코드 교환·HTTP 확장·모바일 로그인 참고 문서 | 완료                     |
 
 ## 다음 작업: 승인 대기
 
-TASK-008의 카카오 Access Token 검증·HTTP 지원은 완료했다. 현재 활성 Product Task나 RED 상태 테스트는 없다.
-네이버 어댑터와 모바일에서 실제 제공자 로그인은 아직 구현·검증하지 않았다.
-[TASK-009](TASK-009/task.yaml)는 다른 세션용 네이버 로그인 작업 초안이다. 문서 준비만 승인되었으며 status=pending, phase=requirement다.
-다음 세션은 TASK-009 네 문서를 읽고 공식 계약 확인→인증 방식 제안·구현 승인→Test 설계→RED 순서로 시작한다.
+TASK-009까지 구글·카카오·네이버 API 인증을 완료했다. 현재 활성 Product Task나 RED 상태 테스트는 없다.
+네이버는 서버의 우리 앱 Client ID·Secret으로 인가 코드를 교환한다. 모바일은 네이버 state를 로그인 시도와 대조한 후 API로 전달해야 한다.
+모바일의 실제 제공자 로그인·SDK·콜백·state/nonce 처리는 아직 구현·검증하지 않았다.
+후속 제안은 모바일 SDK와 Callback URL 선택, 제공자별 로그인 시도 보호 설계·구현 및 실제 앱 인증 검증이다. 시작 전 별도 승인을 받는다.
+[모바일 로그인 참고 문서](../../docs/social-login-process.md)를 읽고 현재 API 계약과 클라이언트 책임을 확인한다.
 feat/auth 작업은 아직 main에 병합하지 않았다. auth 브랜치를 push하거나 PR을 병합하는 것은 별도 승인 범위다.

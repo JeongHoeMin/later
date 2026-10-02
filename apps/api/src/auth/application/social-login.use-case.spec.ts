@@ -34,7 +34,11 @@ describe('SocialLoginUseCase', () => {
       const useCase = new SocialLoginUseCase(providers, users);
 
       expect(
-        await useCase.execute({ provider, credential: 'social-credential' }),
+        await useCase.execute({
+          provider,
+          credential: 'social-credential',
+          ...(provider === 'naver' ? { state: 'naver-state' } : {}),
+        }),
       ).toEqual(user);
       expect(users.execute).toHaveBeenCalledExactlyOnceWith({
         provider,
@@ -44,7 +48,10 @@ describe('SocialLoginUseCase', () => {
       for (const adapter of providers) {
         if (adapter.provider === provider) {
           expect(adapter.authenticate).toHaveBeenCalledExactlyOnceWith(
-            'social-credential',
+            ...[
+              'social-credential',
+              ...(provider === 'naver' ? ['naver-state'] : []),
+            ],
           );
         } else {
           expect(adapter.authenticate).not.toHaveBeenCalled();

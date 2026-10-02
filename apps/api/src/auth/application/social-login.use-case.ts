@@ -8,6 +8,7 @@ import { UnsupportedSocialProviderError } from '@auth/domain/errors/unsupported-
 export type SocialLoginCommand = {
   provider: SocialProvider;
   credential: string;
+  state?: string;
 };
 
 export class SocialLoginUseCase {
@@ -29,7 +30,9 @@ export class SocialLoginUseCase {
       throw new UnsupportedSocialProviderError();
     }
 
-    const identity = await adapter.authenticate(command.credential);
+    const identity = await (command.provider === 'naver'
+      ? adapter.authenticate(command.credential, command.state)
+      : adapter.authenticate(command.credential));
 
     if (!identity.subject.trim()) {
       throw new SocialAuthenticationFailedError();

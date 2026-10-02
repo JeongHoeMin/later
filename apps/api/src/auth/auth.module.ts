@@ -5,6 +5,7 @@ import { FindOrCreateSocialUserUseCase } from '@users/application/find-or-create
 import { SocialLoginUseCase } from '@auth/application/social-login.use-case.js';
 import { GoogleAuthProvider } from '@auth/infrastructure/google/google-auth-provider.js';
 import { KakaoAuthProvider } from '@auth/infrastructure/kakao/kakao-auth-provider.js';
+import { NaverAuthProvider } from '@auth/infrastructure/naver/naver-auth-provider.js';
 import { SocialLoginController } from '@auth/presentation/http/social-login.controller.js';
 import { AccessTokenModule } from './access-token.module.js';
 import { PrismaModule } from '../database/prisma.module.js';
@@ -117,13 +118,23 @@ const GOOGLE_CLIENT_ID = Symbol('GoogleClientId');
       inject: [
         GoogleAuthProvider,
         KakaoAuthProvider,
+        NaverAuthProvider,
         FindOrCreateSocialUserUseCase,
       ],
       useFactory: (
         google: GoogleAuthProvider,
         kakao: KakaoAuthProvider,
+        naver: NaverAuthProvider,
         users: FindOrCreateSocialUserUseCase,
-      ) => new SocialLoginUseCase([google, kakao], users),
+      ) => new SocialLoginUseCase([google, kakao, naver], users),
+    },
+    {
+      provide: NaverAuthProvider,
+      useFactory: () =>
+        new NaverAuthProvider(
+          process.env.NAVER_CLIENT_ID ?? '',
+          process.env.NAVER_CLIENT_SECRET ?? '',
+        ),
     },
   ],
   exports: [SocialLoginUseCase],

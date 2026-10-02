@@ -5,6 +5,26 @@ import { SocialLoginRequestPipe } from './social-login-request.pipe.js';
 describe('SocialLoginRequestPipe', () => {
   const pipe = new SocialLoginRequestPipe();
 
+  it('네이버 인가 코드와 state를 보존한다', () => {
+    expect(
+      pipe.transform({
+        provider: 'naver',
+        credential: 'code',
+        state: 'random-state',
+      }),
+    ).toEqual({ provider: 'naver', credential: 'code', state: 'random-state' });
+  });
+
+  it.each([
+    { provider: 'naver', credential: 'code', state: '' },
+    { provider: 'naver', credential: 'code', state: 123 },
+    { provider: 'naver', credential: 'code', state: 'state', subject: 'fake' },
+    { provider: 'google', credential: 'token', state: 'state' },
+    { provider: 'kakao', credential: 'token', state: 'state' },
+  ])('제공자별 잘못된 state 또는 추가 필드를 거부한다', (body) => {
+    expect(() => pipe.transform(body)).toThrow(BadRequestException);
+  });
+
   it('구글과 비어 있지 않은 인증 문자열을 반환한다', () => {
     expect(
       pipe.transform({ provider: 'google', credential: 'id-token' }),

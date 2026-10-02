@@ -2,7 +2,8 @@
 
 `POST /auth/social/login`
 
-구글 ID 토큰과 카카오 Access Token을 지원한다. 같은 경로에서 기존 회원을 조회하거나 신규 회원을 생성한다.
+구글 ID 토큰, 카카오 Access Token, 네이버 인가 코드를 지원한다. 같은 경로에서 기존 회원을 조회하거나 신규 회원을 생성한다.
+모바일 로그인 과정과 state/nonce 책임은 [로그인 프로세스](../../../../../../docs/social-login-process.md)를 참고한다.
 
 ```json
 {
@@ -11,7 +12,7 @@
 }
 ```
 
-- provider는 `google` 또는 `kakao`여야 한다.
+- provider는 `google`, `kakao` 또는 `naver`여야 한다.
 - credential은 비어 있지 않은 문자열이어야 한다.
 - 추가 필드와 잘못된 본문은 400으로 거부한다.
 - 회원 식별에는 검증된 구글 토큰의 sub를 사용한다.
@@ -34,6 +35,24 @@
 외부 인증 동작은 [카카오 공식 문서](https://developers.kakao.com/docs/ko/kakaologin/rest-api#access-token-info)를 따른다.
 
 성공 응답은 기존 회원과 신규 회원 모두 200이다.
+
+네이버 요청:
+
+```json
+{
+  "provider": "naver",
+  "credential": "NAVER_AUTHORIZATION_CODE",
+  "state": "CLIENT_VALIDATED_STATE"
+}
+```
+
+서버는 NAVER_CLIENT_ID·NAVER_CLIENT_SECRET으로 인가 코드를 교환하고 Bearer 토큰으로 프로필을 조회한다.
+성공 resultcode=00과 문자열 response.id를 확인하고 ID만 회원 연결에 사용한다. 네이버 토큰은 저장·반환하지 않는다.
+설정 누락·공백 값은 모듈 구성 시 거부한다. 외부 요청은 각각 5초 제한이며 redirect를 따라가지 않는다.
+네이버 요청에만 state가 필수다. 서버는 state의 형식만 확인하고 교환 요청에 전달한다.
+모바일은 원래 로그인 시도와 state를 대조하고 만료·중복 콜백을 차단한 뒤 호출해야 한다.
+현재 서버에는 state를 발급하거나 원래 값과 대조하는 기능이 없다.
+네이버 인증 실패는 401, 외부 장애·통신·timeout·비정상 응답은 공통 503이며 실패 시 회원·세션을 처리하지 않는다.
 
 ```json
 {

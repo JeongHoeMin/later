@@ -5,5 +5,5 @@ import type {
 
 export interface SocialAuthProvider {
   readonly provider: SocialProvider;
-  authenticate(credential: string): Promise<SocialIdentity>;
+  authenticate(credential: string, state?: string): Promise<SocialIdentity>;
 }

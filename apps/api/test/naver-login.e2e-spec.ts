@@ -19,24 +19,28 @@ import { GoogleAuthProvider } from '@auth/infrastructure/google/google-auth-prov
 import { SOCIAL_USER_REPOSITORY } from '@users/application/ports/social-user.repository.js';
 import { AUTH_SESSION_REPOSITORY } from '@auth/application/ports/auth-session.repository.js';
 
-describe('카카오 소셜 로그인 (e2e)', () => {
+describe('네이버 소셜 로그인 (e2e)', () => {
   let app: INestApplication<App>;
   const http = vi.fn<typeof fetch>();
-  const google = { provider: 'google', authenticate: vi.fn() };
   const users = {
     findBySocialAccount: vi.fn(),
     createWithSocialAccount: vi.fn(),
   };
   const sessions = { create: vi.fn() };
-  const valid = { id: 123456789, app_id: 1234, expires_in: 100 };
   const secret = 'test-only-access-secret-with-at-least-32-bytes';
+  const token = {
+    access_token: 'naver-token',
+    refresh_token: 'provider-refresh',
+    token_type: 'bearer',
+    expires_in: '3600',
+  };
   let log: ReturnType<typeof vi.spyOn>;
 
   beforeAll(async () => {
     vi.stubEnv('GOOGLE_CLIENT_ID', 'test-client');
     vi.stubEnv('KAKAO_APP_ID', '1234');
-    vi.stubEnv('NAVER_CLIENT_ID', 'test-naver-client');
-    vi.stubEnv('NAVER_CLIENT_SECRET', 'test-naver-secret');
+    vi.stubEnv('NAVER_CLIENT_ID', 'our-naver-client');
+    vi.stubEnv('NAVER_CLIENT_SECRET', 'our-naver-secret');
     vi.stubEnv('ACCESS_TOKEN_SECRET', secret);
     vi.stubGlobal('fetch', http);
     log = vi.spyOn(Logger.prototype, 'error').mockImplementation(() => {});
@@ -44,7 +48,7 @@ describe('카카오 소셜 로그인 (e2e)', () => {
       .overrideProvider(PrismaClient)
       .useValue({ $connect: async () => {}, $disconnect: async () => {} })
       .overrideProvider(GoogleAuthProvider)
-      .useValue(google)
+      .useValue({ provider: 'google', authenticate: vi.fn() })
       .overrideProvider(SOCIAL_USER_REPOSITORY)
       .useValue(users)
       .overrideProvider(AUTH_SESSION_REPOSITORY)
@@ -53,19 +57,25 @@ describe('카카오 소셜 로그인 (e2e)', () => {
     app = module.createNestApplication();
     await app.init();
   });
-
   beforeEach(() => {
-    http.mockReset().mockResolvedValue(Response.json(valid));
-    google.authenticate.mockReset();
+    http
+      .mockReset()
+      .mockResolvedValueOnce(Response.json(token))
+      .mockResolvedValueOnce(
+        Response.json({
+          resultcode: '00',
+          message: 'success',
+          response: { id: 'naver-subject' },
+        }),
+      );
     users.findBySocialAccount
       .mockReset()
-      .mockResolvedValue({ id: 'existing-kakao-user' });
+      .mockResolvedValue({ id: 'existing-naver-user' });
     users.createWithSocialAccount
       .mockReset()
-      .mockResolvedValue({ id: 'new-kakao-user' });
+      .mockResolvedValue({ id: 'new-naver-user' });
     sessions.create.mockReset().mockResolvedValue(undefined);
   });
-
   afterAll(async () => {
     try {
       await app?.close();
@@ -75,11 +85,11 @@ describe('카카오 소셜 로그인 (e2e)', () => {
       log?.mockRestore();
     }
   });
-
   function login(
     body: Record<string, unknown> = {
-      provider: 'kakao',
-      credential: 'kakao-access-token',
+      provider: 'naver',
+      credential: 'authorization-code',
+      state: 'client-validated-state',
     },
   ) {
     return request(app.getHttpServer())
@@ -87,13 +97,12 @@ describe('카카오 소셜 로그인 (e2e)', () => {
       .set('Connection', 'keep-alive')
       .send(body);
   }
-
   it.each(['existing', 'new'])(
-    '%s 카카오 회원에게 서비스 토큰 쌍을 반환한다',
+    '%s 회원에게 서비스 토큰을 발급한다',
     async (kind) => {
       if (kind === 'new') users.findBySocialAccount.mockResolvedValue(null);
       const response = await login().expect(200);
-      const userId = kind === 'new' ? 'new-kakao-user' : 'existing-kakao-user';
+      const userId = kind === 'new' ? 'new-naver-user' : 'existing-naver-user';
       expect(response.body).toEqual({
         user: { id: userId },
         accessToken: expect.any(String),
@@ -108,9 +117,15 @@ describe('카카오 소셜 로그인 (e2e)', () => {
       );
       expect(verified.payload.sub).toBe(userId);
       expect(users.findBySocialAccount).toHaveBeenCalledExactlyOnceWith({
-        provider: 'kakao',
-        subject: '123456789',
+        provider: 'naver',
+        subject: 'naver-subject',
       });
+      if (kind === 'new')
+        expect(users.createWithSocialAccount).toHaveBeenCalledExactlyOnceWith({
+          provider: 'naver',
+          subject: 'naver-subject',
+        });
+      else expect(users.createWithSocialAccount).not.toHaveBeenCalled();
       expect(sessions.create).toHaveBeenCalledExactlyOnceWith({
         userId,
         tokenHash: createHash('sha256')
@@ -118,77 +133,48 @@ describe('카카오 소셜 로그인 (e2e)', () => {
           .digest('hex'),
         expiresAt: expect.any(Date),
       });
-      if (kind === 'new')
-        expect(users.createWithSocialAccount).toHaveBeenCalledExactlyOnceWith({
-          provider: 'kakao',
-          subject: '123456789',
-        });
-      else expect(users.createWithSocialAccount).not.toHaveBeenCalled();
-      expect(google.authenticate).not.toHaveBeenCalled();
+      const body = new URLSearchParams(String(http.mock.calls[0][1]?.body));
+      expect(body.get('code')).toBe('authorization-code');
+      expect(body.get('state')).toBe('client-validated-state');
+      expect(body.get('client_id')).toBe('our-naver-client');
+      expect(response.text).not.toContain('provider-refresh');
     },
   );
-
   it.each([
-    [401, { code: -401 }],
-    [200, { ...valid, app_id: 9999 }],
-    [200, { ...valid, expires_in: 0 }],
+    [
+      200,
+      { error: 'unauthorized_client', error_description: 'private credential' },
+      401,
+      'SOCIAL_AUTHENTICATION_FAILED',
+    ],
+    [
+      503,
+      { error: 'server_error', error_description: 'private credential' },
+      503,
+      'INTERNAL_SERVER_ERROR',
+    ],
+    [200, {}, 503, 'INTERNAL_SERVER_ERROR'],
   ])(
-    '토큰 검증 실패 %i는 회원과 세션을 처리하지 않고 401을 반환한다',
-    async (status, body) => {
-      http.mockResolvedValue(Response.json(body, { status }));
-      const response = await login().expect(401);
-      expect(response.body.error.code).toBe('SOCIAL_AUTHENTICATION_FAILED');
+    '외부 실패 %i %j는 저장 없이 공통 오류로 처리한다',
+    async (status, body, expectedStatus, code) => {
+      http.mockReset().mockResolvedValue(Response.json(body, { status }));
+      const response = await login().expect(expectedStatus);
+      expect(response.body.error.code).toBe(code);
+      expect(response.text).not.toContain('private credential');
+      expect(response.text).not.toContain('authorization-code');
       expect(users.findBySocialAccount).not.toHaveBeenCalled();
       expect(users.createWithSocialAccount).not.toHaveBeenCalled();
       expect(sessions.create).not.toHaveBeenCalled();
     },
   );
-
   it.each([
-    [400, { code: -1 }],
-    [503, { msg: 'private server details' }],
-    [200, {}],
-  ])(
-    '카카오 장애 또는 응답 오류 %i는 공통 503으로 처리한다',
-    async (status, body) => {
-      http.mockResolvedValue(Response.json(body, { status }));
-      const response = await login().expect(503);
-      expect(response.body).toEqual({
-        error: {
-          code: 'INTERNAL_SERVER_ERROR',
-          message: '서버 오류가 발생했습니다.',
-        },
-      });
-      expect(users.findBySocialAccount).not.toHaveBeenCalled();
-      expect(sessions.create).not.toHaveBeenCalled();
-    },
-  );
-
-  it('외부 통신 오류는 401로 오인하지 않고 503을 반환한다', async () => {
-    http.mockRejectedValue(new TypeError('private network details'));
-    const response = await login().expect(503);
-    expect(response.body.error.code).toBe('INTERNAL_SERVER_ERROR');
-    expect(users.findBySocialAccount).not.toHaveBeenCalled();
-    expect(sessions.create).not.toHaveBeenCalled();
-  });
-
-  it.each([
-    { provider: 'kakao', credential: ' ' },
-    { provider: 'kakao', credential: 'token', subject: 'fake' },
-    { provider: 'naver', credential: 'token' },
-  ])('잘못된 본문 %j는 외부 호출 전에 400을 반환한다', async (body) => {
+    { provider: 'naver', credential: 'code' },
+    { provider: 'naver', credential: 'code', state: '' },
+    { provider: 'naver', credential: 'code', state: 'state', subject: 'fake' },
+  ])('잘못된 입력은 외부 호출 전에 400이다', async (body) => {
     await login(body).expect(400);
     expect(http).not.toHaveBeenCalled();
     expect(users.findBySocialAccount).not.toHaveBeenCalled();
-    expect(sessions.create).not.toHaveBeenCalled();
-  });
-
-  it('회원 저장소 오류는 외부 인증 장애로 바꾸지 않고 500을 반환한다', async () => {
-    users.findBySocialAccount.mockRejectedValue(
-      new Error('private DB details'),
-    );
-    const response = await login().expect(500);
-    expect(response.body.error.code).toBe('INTERNAL_SERVER_ERROR');
     expect(sessions.create).not.toHaveBeenCalled();
   });
 });
