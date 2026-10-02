@@ -45,12 +45,24 @@ function setup() {
     session,
     persisted: () => persisted,
     advance: () => {
-      now = 900000;
+      now += 900000;
     },
   };
 }
 
 describe('AuthSession', () => {
+  it('does not return a rotated access token that expires during storage', async () => {
+    const { session, store, advance, api } = setup();
+    await session.login({ provider: 'google', credential: 'id-token' });
+    advance();
+    vi.mocked(store.write).mockImplementationOnce(async () => {
+      advance();
+    });
+    await expect(session.getAccessToken()).rejects.toThrow(
+      '인증 처리 중 토큰이 만료되었습니다. 다시 시도해주세요.',
+    );
+    expect(api.refresh).toHaveBeenCalledTimes(1);
+  });
   it('attempts deletion even when logout cannot read persisted credentials', async () => {
     const { session, store } = setup();
     vi.mocked(store.read).mockRejectedValue(

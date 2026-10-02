@@ -70,6 +70,10 @@ export class AuthSession {
       if (!this.active) return null;
       if (this.active.expiresAt - this.now() <= 30000)
         await this.rotate(this.active);
+      if (this.active && this.active.expiresAt <= this.now())
+        throw new Error(
+          '인증 처리 중 토큰이 만료되었습니다. 다시 시도해주세요.',
+        );
       return this.active?.tokens.accessToken ?? null;
     });
     this.accessRequest = pending;
