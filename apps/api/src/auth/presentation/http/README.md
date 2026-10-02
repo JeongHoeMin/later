@@ -2,7 +2,7 @@
 
 `POST /auth/social/login`
 
-구글·Apple ID 토큰, 카카오 Access Token, 네이버 인가 코드를 지원한다. 같은 경로에서 기존 회원을 조회하거나 신규 회원을 생성한다.
+구글·Apple ID 토큰과 카카오 Access Token을 지원한다. 기존 회원을 조회하거나 신규 회원을 생성한다. 네이버는 아래 전용 시작·콜백·완료 경로를 사용한다.
 모바일 로그인 과정과 state/nonce 책임은 [로그인 프로세스](../../../../../../docs/social-login-process.md)를 참고한다.
 
 ```json
@@ -12,7 +12,7 @@
 }
 ```
 
-- provider는 `google`, `kakao`, `naver` 또는 `apple`이어야 한다.
+- provider는 `google`, `kakao` 또는 `apple`이어야 한다.
 - credential은 비어 있지 않은 문자열이어야 한다.
 - 추가 필드와 잘못된 본문은 400으로 거부한다.
 - 회원 식별에는 검증된 구글 토큰의 sub를 사용한다.
@@ -36,23 +36,20 @@
 
 성공 응답은 기존 회원과 신규 회원 모두 200이다.
 
-네이버 요청:
+## 네이버 서버 로그인
 
-```json
-{
-  "provider": "naver",
-  "credential": "NAVER_AUTHORIZATION_CODE",
-  "state": "CLIENT_VALIDATED_STATE"
-}
-```
+기존 POST /auth/social/login의 provider=naver 직접 code/state 제출은 400으로 거부한다.
 
-서버는 NAVER_CLIENT_ID·NAVER_CLIENT_SECRET으로 인가 코드를 교환하고 Bearer 토큰으로 프로필을 조회한다.
-성공 resultcode=00과 문자열 response.id를 확인하고 ID만 회원 연결에 사용한다. 네이버 토큰은 저장·반환하지 않는다.
-설정 누락·공백 값은 모듈 구성 시 거부한다. 외부 요청은 각각 5초 제한이며 redirect를 따라가지 않는다.
-네이버 요청에만 state가 필수다. 서버는 state의 형식만 확인하고 교환 요청에 전달한다.
-모바일은 원래 로그인 시도와 state를 대조하고 만료·중복 콜백을 차단한 뒤 호출해야 한다.
-현재 서버에는 state를 발급하거나 원래 값과 대조하는 기능이 없다.
-네이버 인증 실패는 401, 외부 장애·통신·timeout·비정상 응답은 공통 503이며 실패 시 회원·세션을 처리하지 않는다.
+1. POST /auth/social/naver/start: 본문 없음 또는 {}. 201 {loginAttemptId, attemptSecret, authorizationUrl, expiresIn:300}. 앱은 ID/비밀값을 보관하고 URL을 브라우저로 연다.
+2. GET /auth/social/naver/callback: 네이버의 code/state 또는 error/state를 서버가 받는다. state 해시·만료·미사용 콜백을 검증하고 암호화 grant를 일시 저장한다. 303 Location은 고정 앱 URI와 loginAttemptId만 포함한다. code/state/비밀값/토큰을 앱 URL에 전달하지 않는다. 취소도 앱에 ID만 반환한다.
+3. POST /auth/social/naver/complete: {loginAttemptId, attemptSecret}. 앱 보관 비밀값·콜백 완료·5분 만료·일회 사용을 검증한 뒤 서버 code 교환·프로필 확인·회원/세션 발급. 성공 200은 아래 공통 응답. 준비 전·불일치·만료·재사용·취소는 401 SOCIAL_AUTHENTICATION_FAILED. 입력 400, 설정/외부 장애 503 INTERNAL_SERVER_ERROR.
+
+서버 NAVER_LOGIN_CALLBACK_URL은 https://later.hoe.pe.kr/auth/social/naver/callback (사용자 콘솔 등록 완료). NAVER_LOGIN_APP_RETURN_URL은 실제 앱 URI로 설정해야 한다. later://auth/naver는 예시이며 실제 값은 아직 미제공. NAVER_LOGIN_BRIDGE_KEY는 별도 32바이트 무작위 base64url 키다. 브리지 설정은 사용 시 검사하며 누락이면 503이다.
+
+NAVER_CLIENT_ID/NAVER_CLIENT_SECRET은 서버에서만 사용하며 기존 설정 누락은 모듈 구성에서 거부한다. 시도에는 state/비밀값 해시와 AES-GCM 암호화 code/state를 저장한다. 완료 시 grant를 삭제하고 외부 교환 전에 시도를 소비하므로 이후 실패·응답 유실은 새 start로 재개한다. 만료 행 자동 정리는 아직 없다. 네이버 제공자 토큰은 저장/반환하지 않는다. 회원은 프로필 response.id로 식별하며 외부 요청 각각 5초 제한, redirect 거부를 적용한다.
+
+새 네이버 API 응답은 Cache-Control: no-store, 콜백은 Referrer-Policy: no-referrer. 프록시 로그의 code/state query도 제외한다. 앱이 서버 state 대조/만료/일회 사용을 대신하는 계약이 아니다. 실제 딥링크 수신·시도 ID 연결·비밀값 보관은 앱 책임이다.
+상세 단계·오류·설정은 [로그인 프로세스](../../../../../../docs/social-login-process.md)를 따른다.
 
 ## Apple 로그인
 

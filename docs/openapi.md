@@ -22,14 +22,19 @@ Bearer 보안 스키마는 서비스 JWT를 의미한다. 각 API에 표시된 �
 
 ## 인증 API 계약
 
-문서에는 provider별 로그인 입력 oneOf 4개, 필수 state/loginAttemptId, 추가 필드 금지, 공통 오류 본문, 서비스 토큰·Apple 시도 응답, refresh/logout 계약이 포함된다. 로그인 시작·토큰 발급·갱신·로그아웃은 서비스 Bearer를 요구하지 않는다. Swagger Authorize에는 필요할 때 Later 서비스 Access Token을 넣는다.
+POST /auth/social/login의 oneOf는 Google/Kakao/Apple 3개다. Apple에는 loginAttemptId가 필수다. 네이버는 별도 서버 시작·콜백·완료 흐름이며 기존 직접 code/state 제출은 거부한다. 메타데이터에는 추가 필드 금지, 입력·성공·공통 오류 응답이 포함된다.
 
-| API                           | 성공                       | 요청                                                   |
-| ----------------------------- | -------------------------- | ------------------------------------------------------ |
-| POST /auth/social/login       | 200 회원·서비스 토큰       | 제공자별 credential과 필요한 state 또는 loginAttemptId |
-| POST /auth/social/apple/start | 201 시도 ID·nonce·유효기간 | 본문 없음 또는 빈 객체                                 |
-| POST /auth/token/refresh      | 200 새 서비스 토큰         | refreshToken                                           |
-| POST /auth/logout             | 204 본문 없음              | refreshToken                                           |
-| GET /auth/me                  | 200 인증된 회원 ID         | Authorization: Bearer 서비스 Access Token              |
+| API                              | 성공                         | 입력                                                     |
+| -------------------------------- | ---------------------------- | -------------------------------------------------------- |
+| POST /auth/social/login          | 200 회원·서비스 토큰         | Google/Kakao credential, Apple credential/loginAttemptId |
+| POST /auth/social/apple/start    | 201 ID·nonce·300초           | 본문 없음/빈 객체                                        |
+| POST /auth/social/naver/start    | 201 ID·비밀값·인가 URL·300초 | 본문 없음/빈 객체                                        |
+| GET /auth/social/naver/callback  | 303 고정 앱 URI              | 네이버 code/state 또는 error/state                       |
+| POST /auth/social/naver/complete | 200 회원·서비스 토큰         | loginAttemptId, attemptSecret                            |
+| POST /auth/token/refresh         | 200 새 토큰                  | refreshToken                                             |
+| POST /auth/logout                | 204 빈 응답                  | refreshToken                                             |
+| GET /auth/me                     | 200 회원 ID                  | Authorization: Bearer 서비스 Access Token                |
 
-로그인·세션 상세 동작은 [로그인 프로세스](social-login-process.md)와 [HTTP 계약](../apps/api/src/auth/presentation/http/README.md)을 참고한다.
+/auth/me만 위 표에서 서비스 Bearer가 필요하다. 네이버 Callback은 브라우저가 호출하는 경로이며 앱이 직접 호출하지 않는다. 303 Location에는 시도 ID만 있다. /docs-json에서 네이버 경로가 보이지 않으면 최신 서버 재시작/배포 여부를 확인한다. 문서 조회 기능 자체는 서버 배포를 수행하지 않는다.
+
+[로그인 프로세스](social-login-process.md), [HTTP 계약](../apps/api/src/auth/presentation/http/README.md)을 참고한다.
