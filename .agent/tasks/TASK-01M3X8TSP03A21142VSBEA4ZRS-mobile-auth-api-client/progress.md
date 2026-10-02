@@ -15,3 +15,5 @@ expo install vitest 설치는 기존 Prisma/scarf build-script 승인 정책으�
 후속 Task: 토큰 수명주기·보안 저장, 제공자 SDK/UI. 실제 기기/제공자 설정 검증은 이 Task 범위 밖. 제공자 SDK 범위에 대한 비동기 질문은 아직 답변 없음.
 
 리뷰 P2 응답 본문 수신 타임아웃 오분류: 200/503 본문 지연2개 RED → 수정 후21/21 GREEN. 전체 lint 및 tsc PASS. Android Metro export PASS(실제 기기/native 로그인 검증 아님).
+
+범위 정정: 사용자가 이 세션에서는 모바일 구현을 건드리지 않고 서버만 진행한다고 명시했다. Agent가 범위를 넓혀 해석한 작업이며 모바일 구현·의존성·설정·추가 가이드·테스트를 역적용했다. status cancelled. 기존 테스트 결과는 당시 실행 이력이며 현재 기능 완료 상태를 뜻하지 않는다. 재개하지 않는다.

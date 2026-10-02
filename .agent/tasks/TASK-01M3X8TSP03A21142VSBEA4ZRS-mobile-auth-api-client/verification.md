@@ -14,3 +14,5 @@ REFACTOR: 명시적인 응답 조립 및 공유 모듈 타입-only lint 수정. 
 실제 기기 로그인: N/A(이 Task는 공통 HTTP 클라이언트).
 
 최종: 전체21/21 PASS, tsc PASS, mobile 전체 lint PASS, Expo Android export PASS. 리뷰 P2는2개 재현 RED 후 수정/GREEN. git diff --check PASS. native/device 검증 N/A.
+
+현재 상태: CANCELLED. 해당 구현을 역적용했으므로 과거 PASS는 현재 checkout의 기능 완료 증거가 아니다. baseline 복구 검증은 TASK-01M3XBFKXNDX422G8ZTRZTW4S9에 기록.
