@@ -2,6 +2,7 @@
 
 Task 생성·식별·병렬 작업 규칙은 이 문서에서만 정의한다. TDD·요구사항·검증·완료 규칙은 [공통 Workflow](AGENTS.md)를 유지한다.
 ULID 구성과 인코딩 근거는 [공식 ULID 규격](https://github.com/ulid/spec)이다. 같은 밀리초 안의 생성 순서까지 정렬된다고 보장하지 않는다.
+전체 ULID도 시간 prefix를 유지하므로 ID의 문자열 정렬은 밀리초 기준 시간순 정렬이다. Dashboard/조회는 ID를 오름차순으로 정렬한다. 이관된 과거 Task의 실제 작업 시간 조회는 보존한 created_at을 사용한다.
 
 ## Identity와 Directory
 
