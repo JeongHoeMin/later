@@ -1,10 +1,17 @@
-# Task 목록
+# Task 조회
 
-새 세션은 이 목록에서 현재 브랜치에 해당하는 Task를 선택하고 네 문서를 순서대로 읽는다.
-서로 다른 브랜치에서 완료된 기능을 현재 브랜치에도 있다고 가정하지 않는다.
+Task의 원본은 현재 checkout의 각 Directory에 있는 네 문서다. 이 파일에는 Task별 상태 표를 수동 관리하지 않는다.
+생성·이름·병렬 작업 규칙은 [Task Identity](../task-identity.md), 코드 컨벤션은 [project.md](../project.md)를 따른다.
 
-| Task                           | 범위                                              | 상태 / 브랜치                     |
-| ------------------------------ | ------------------------------------------------- | --------------------------------- |
-| [TASK-001](TASK-001/task.yaml) | 공통 Agent Workflow와 템플릿 정착; 샘플 구조 검증 | 완료 / docs/agent-workflow → main |
+PowerShell에서 현재 checkout의 Task 파일을 조회한다:
 
-다음 기능 제안: feat/auth에서 기존 작업의 사후 기록을 만든 후 카카오 인증 어댑터 작업 승인을 받는다. 현재 카카오 기능은 승인되지 않았다.
+```powershell
+Get-ChildItem .agent/tasks -Directory |
+  ForEach-Object { Join-Path $_.FullName 'task.yaml' } |
+  Where-Object { Test-Path -LiteralPath $_ } |
+  ForEach-Object { Get-Content -LiteralPath $_ }
+```
+
+브랜치와 status/phase/current_summary/next_action을 확인한 후 해당 Task의 task.yaml → requirement.md → progress.md → verification.md를 읽는다.
+완료 Task의 후속 제안은 각 progress.md와 최종 보고를 참고한다. 다른 브랜치의 구현·검증 상태를 현재 checkout에 있다고 가정하지 않는다.
+Dashboard가 필요하면 이 파일의 수동 표를 추가하는 대신 Task 데이터를 읽어 파생 뷰를 생성한다.
