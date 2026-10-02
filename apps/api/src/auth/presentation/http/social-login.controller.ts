@@ -5,6 +5,7 @@ import {
   HttpStatus,
   Inject,
   Post,
+  ServiceUnavailableException,
   UnauthorizedException,
 } from '@nestjs/common';
 import {
@@ -12,6 +13,7 @@ import {
   type SocialSignInResult,
 } from '@auth/application/social-sign-in.use-case.js';
 import { SocialAuthenticationFailedError } from '@auth/domain/errors/social-authentication-failed.error.js';
+import { SocialAuthenticationUnavailableError } from '@auth/domain/errors/social-authentication-unavailable.error.js';
 import {
   SocialLoginRequestPipe,
   type SocialLoginRequest,
@@ -34,6 +36,11 @@ export class SocialLoginController {
     try {
       return await this.loginUseCase.execute(request);
     } catch (error: unknown) {
+      if (error instanceof SocialAuthenticationUnavailableError) {
+        throw new ServiceUnavailableException(
+          '소셜 인증을 일시적으로 사용할 수 없습니다.',
+        );
+      }
       if (error instanceof SocialAuthenticationFailedError) {
         throw new UnauthorizedException({
           code: 'SOCIAL_AUTHENTICATION_FAILED',

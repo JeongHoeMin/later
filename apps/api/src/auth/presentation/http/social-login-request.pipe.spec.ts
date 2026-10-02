@@ -11,6 +11,12 @@ describe('SocialLoginRequestPipe', () => {
     ).toEqual({ provider: 'google', credential: 'id-token' });
   });
 
+  it('카카오 Access Token과 provider를 그대로 반환한다', () => {
+    expect(
+      pipe.transform({ provider: 'kakao', credential: 'access-token' }),
+    ).toEqual({ provider: 'kakao', credential: 'access-token' });
+  });
+
   it.each(
     [
       undefined,
@@ -24,7 +30,7 @@ describe('SocialLoginRequestPipe', () => {
       { provider: 'google', credential: '   ' },
       { provider: 'google', credential: null },
       { provider: 'google', credential: 123 },
-      { provider: 'kakao', credential: 'id-token' },
+      { provider: 'kakao', credential: '   ' },
       { provider: 'naver', credential: 'id-token' },
       { provider: 'unknown', credential: 'id-token' },
       { provider: 'google', credential: 'id-token', subject: 'client-subject' },

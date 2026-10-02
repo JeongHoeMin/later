@@ -16,13 +16,69 @@ function builder() {
 }
 
 describe('AuthModule', () => {
-  beforeEach(() =>
+  beforeEach(() => {
+    vi.stubEnv('KAKAO_APP_ID', '1234');
     vi.stubEnv(
       'ACCESS_TOKEN_SECRET',
       'test-only-access-secret-with-at-least-32-bytes',
-    ),
+    );
+  });
+  afterEach(() => {
+    vi.unstubAllEnvs();
+    vi.unstubAllGlobals();
+  });
+
+  it.each([undefined, '', ' ', '0', 'invalid-app-key'])(
+    'KAKAO_APP_ID %j가 잘못되면 모듈 구성을 거부한다',
+    async (appId) => {
+      vi.stubEnv('GOOGLE_CLIENT_ID', clientId);
+      vi.stubEnv('KAKAO_APP_ID', appId);
+      await expect(
+        builder()
+          .compile()
+          .then(async (module) => {
+            await module.close();
+            return 'compiled';
+          }),
+      ).rejects.toThrow('KAKAO_APP_ID');
+    },
   );
-  afterEach(() => vi.unstubAllEnvs());
+
+  it('카카오 인증 결과로 회원을 연결하고 구글 어댑터를 호출하지 않는다', async () => {
+    vi.stubEnv('GOOGLE_CLIENT_ID', clientId);
+    const http = vi
+      .fn<typeof fetch>()
+      .mockResolvedValue(
+        Response.json({ id: 5678, app_id: 1234, expires_in: 100 }),
+      );
+    vi.stubGlobal('fetch', http);
+    const google = { verifyIdToken: vi.fn() };
+    const repository = {
+      findBySocialAccount: vi.fn().mockResolvedValue({ id: 'kakao-user' }),
+      createWithSocialAccount: vi.fn(),
+    };
+    const module = await builder()
+      .overrideProvider(SOCIAL_USER_REPOSITORY)
+      .useValue(repository)
+      .overrideProvider(OAuth2Client)
+      .useValue(google)
+      .compile();
+    try {
+      await expect(
+        module
+          .get(SocialLoginUseCase)
+          .execute({ provider: 'kakao', credential: 'access-token' }),
+      ).resolves.toEqual({ id: 'kakao-user' });
+      expect(repository.findBySocialAccount).toHaveBeenCalledExactlyOnceWith({
+        provider: 'kakao',
+        subject: '5678',
+      });
+      expect(google.verifyIdToken).not.toHaveBeenCalled();
+      expect(http).toHaveBeenCalledOnce();
+    } finally {
+      await module.close();
+    }
+  });
 
   it.each([undefined, '', '   '])(
     'Client ID %j가 없으면 모듈 구성을 거부한다',

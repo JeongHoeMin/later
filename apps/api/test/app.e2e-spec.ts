@@ -11,6 +11,7 @@ describe('AppController (e2e)', () => {
 
   beforeEach(async () => {
     vi.stubEnv('GOOGLE_CLIENT_ID', 'e2e-client.apps.googleusercontent.com');
+    vi.stubEnv('KAKAO_APP_ID', '1234');
     vi.stubEnv(
       'ACCESS_TOKEN_SECRET',
       'test-only-access-secret-with-at-least-32-bytes',

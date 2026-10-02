@@ -30,6 +30,7 @@ describe('세션 갱신과 로그아웃 (e2e)', () => {
   const log = vi.spyOn(Logger.prototype, 'error').mockImplementation(() => {});
   beforeAll(async () => {
     vi.stubEnv('GOOGLE_CLIENT_ID', 'test-client');
+    vi.stubEnv('KAKAO_APP_ID', '1234');
     vi.stubEnv('ACCESS_TOKEN_SECRET', secret);
     const module = await Test.createTestingModule({ imports: [AppModule] })
       .overrideProvider(PrismaClient)

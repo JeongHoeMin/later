@@ -35,6 +35,7 @@ describe('POST /auth/social/login (e2e)', () => {
 
   beforeAll(async () => {
     vi.stubEnv('GOOGLE_CLIENT_ID', 'e2e-client.apps.googleusercontent.com');
+    vi.stubEnv('KAKAO_APP_ID', '1234');
     vi.stubEnv('ACCESS_TOKEN_SECRET', secret);
     const module = await Test.createTestingModule({ imports: [AppModule] })
       .overrideProvider(PrismaClient)
@@ -133,7 +134,7 @@ describe('POST /auth/social/login (e2e)', () => {
   it.each([
     {},
     { provider: 'google', credential: '   ' },
-    { provider: 'kakao', credential: 'id-token' },
+    { provider: 'naver', credential: 'id-token' },
     { provider: 'google', credential: 'id-token', subject: 'fake-subject' },
   ])('잘못된 요청 %j는 인증 전에 400을 반환한다', async (body) => {
     const response = await login(body).expect(400);

@@ -4,6 +4,7 @@ import { UsersModule } from '@users/users.module.js';
 import { FindOrCreateSocialUserUseCase } from '@users/application/find-or-create-social-user.use-case.js';
 import { SocialLoginUseCase } from '@auth/application/social-login.use-case.js';
 import { GoogleAuthProvider } from '@auth/infrastructure/google/google-auth-provider.js';
+import { KakaoAuthProvider } from '@auth/infrastructure/kakao/kakao-auth-provider.js';
 import { SocialLoginController } from '@auth/presentation/http/social-login.controller.js';
 import { AccessTokenModule } from './access-token.module.js';
 import { PrismaModule } from '../database/prisma.module.js';
@@ -108,12 +109,21 @@ const GOOGLE_CLIENT_ID = Symbol('GoogleClientId');
         new GoogleAuthProvider(clientId, client),
     },
     {
+      provide: KakaoAuthProvider,
+      useFactory: () => new KakaoAuthProvider(process.env.KAKAO_APP_ID ?? ''),
+    },
+    {
       provide: SocialLoginUseCase,
-      inject: [GoogleAuthProvider, FindOrCreateSocialUserUseCase],
+      inject: [
+        GoogleAuthProvider,
+        KakaoAuthProvider,
+        FindOrCreateSocialUserUseCase,
+      ],
       useFactory: (
         google: GoogleAuthProvider,
+        kakao: KakaoAuthProvider,
         users: FindOrCreateSocialUserUseCase,
-      ) => new SocialLoginUseCase([google], users),
+      ) => new SocialLoginUseCase([google, kakao], users),
     },
   ],
   exports: [SocialLoginUseCase],

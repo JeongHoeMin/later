@@ -22,6 +22,7 @@ describe('AuthModule integration', () => {
       throw new Error('통합 테스트는 later_test DB에서 실행해야 합니다.');
     vi.stubEnv('DATABASE_URL', url);
     vi.stubEnv('GOOGLE_CLIENT_ID', 'test-client');
+    vi.stubEnv('KAKAO_APP_ID', '1234');
     vi.stubEnv(
       'ACCESS_TOKEN_SECRET',
       'test-only-access-secret-with-at-least-32-bytes',

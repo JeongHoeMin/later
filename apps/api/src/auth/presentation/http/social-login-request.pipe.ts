@@ -1,6 +1,9 @@
 import { BadRequestException, type PipeTransform } from '@nestjs/common';
 
-export type SocialLoginRequest = { provider: 'google'; credential: string };
+export type SocialLoginRequest = {
+  provider: 'google' | 'kakao';
+  credential: string;
+};
 
 export class SocialLoginRequestPipe implements PipeTransform<
   unknown,
@@ -13,8 +16,8 @@ export class SocialLoginRequestPipe implements PipeTransform<
 
     const body = value as Record<string, unknown>;
     const errors: string[] = [];
-    if (body.provider !== 'google')
-      errors.push('provider는 google이어야 합니다.');
+    if (body.provider !== 'google' && body.provider !== 'kakao')
+      errors.push('provider는 google 또는 kakao여야 합니다.');
     if (typeof body.credential !== 'string' || !body.credential.trim()) {
       errors.push('credential은 비어 있지 않은 문자열이어야 합니다.');
     }
@@ -27,6 +30,9 @@ export class SocialLoginRequestPipe implements PipeTransform<
     }
     if (errors.length) throw new BadRequestException(errors);
 
-    return { provider: 'google', credential: body.credential as string };
+    return {
+      provider: body.provider as SocialLoginRequest['provider'],
+      credential: body.credential as string,
+    };
   }
 }
