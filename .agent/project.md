@@ -8,7 +8,7 @@ pnpm workspace: `apps/api`는 NestJS/TypeScript API, `apps/mobile`은 Expo/React
 
 ## API 설계
 
-- 목표: 구글·카카오·네이버만으로 간편 회원가입과 로그인. 자체 비밀번호 회원가입은 없다. 현재 구현 상태는 해당 브랜치의 Task 문서에서 확인한다. 목표를 구현 완료로 간주하지 않는다.
+- 목표: 구글·카카오·네이버·애플 소셜 계정으로 간편 회원가입과 로그인. 자체 비밀번호 회원가입은 없다. 현재 구현 상태는 해당 브랜치의 Task 문서에서 확인한다. 목표를 구현 완료로 간주하지 않는다.
 - 도메인별 `users`, `auth`를 나누고 `domain`, `application`, `infrastructure`, `presentation/http` 경계를 사용한다.
 - domain/application은 Nest·Prisma·HTTP에 의존하지 않는다. 유스케이스는 필요한 포트에 의존하고 infrastructure가 구현한다. Nest Module에서 DI를 조립한다.
 - SOLID와 객체지향을 적용하되 미래 기능을 위한 상속·인터페이스를 만들지 않는다. 한 클래스의 책임과 필요한 의존성을 작게 유지하고 composition을 우선한다.

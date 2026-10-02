@@ -15,6 +15,7 @@ import request from 'supertest';
 import type { App } from 'supertest/types.js';
 import { afterAll, beforeAll, describe, expect, it, vi } from 'vitest';
 import { AppModule } from '../src/app.module.js';
+import { PrismaClient } from '@db/client.js';
 
 @Controller('error-fixture')
 class ErrorFixtureController {
@@ -66,16 +67,32 @@ describe('공통 오류 응답 (e2e)', () => {
     .mockImplementation(() => {});
 
   beforeAll(async () => {
+    vi.stubEnv('GOOGLE_CLIENT_ID', 'e2e-client.apps.googleusercontent.com');
+    vi.stubEnv('KAKAO_APP_ID', '1234');
+    vi.stubEnv('APPLE_CLIENT_IDS', 'com.later.test');
+    vi.stubEnv('NAVER_CLIENT_ID', 'test-naver-client');
+    vi.stubEnv('NAVER_CLIENT_SECRET', 'test-naver-secret');
+    vi.stubEnv(
+      'ACCESS_TOKEN_SECRET',
+      'test-only-access-secret-with-at-least-32-bytes',
+    );
     const module = await Test.createTestingModule({
       imports: [AppModule],
       controllers: [ErrorFixtureController],
-    }).compile();
+    })
+      .overrideProvider(PrismaClient)
+      .useValue({ $connect: async () => {}, $disconnect: async () => {} })
+      .compile();
     app = module.createNestApplication();
     await app.init();
   });
   afterAll(async () => {
-    await app?.close();
-    logError.mockRestore();
+    try {
+      await app?.close();
+    } finally {
+      logError.mockRestore();
+      vi.unstubAllEnvs();
+    }
   });
 
   function get(path: string) {

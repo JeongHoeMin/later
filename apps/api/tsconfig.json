@@ -20,6 +20,7 @@
     "strictPropertyInitialization": false,
     "types": ["vitest/globals", "node"],
     "paths": {
+      "@db/*": ["./src/generated/prisma/*"],
       "@users/*": ["./src/users/*"],
       "@auth/*": ["./src/auth/*"]
     }

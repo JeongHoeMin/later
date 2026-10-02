@@ -1,0 +1,10 @@
+id: TASK-01M3X3N5Y5BZV3PP8RHMADTRGJ
+title: 구글 소셜 인증과 로그인 HTTP 경계 (사후 기록)
+status: completed
+phase: completed
+priority: normal
+created_at: 2026-10-02
+updated_at: 2026-10-02T10:28:59.078+09:00
+current_summary: 사후 기록과 현재 API baseline 검증을 완료했다. 과거 RED 확인 불가는 verification.md에 구분했다.
+next_action: null
+blocked_by: null
