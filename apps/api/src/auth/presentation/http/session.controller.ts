@@ -15,8 +15,21 @@ import {
   RefreshTokenRequestPipe,
   type RefreshTokenRequest,
 } from './refresh-token-request.pipe.js';
+import {
+  ApiBody,
+  ApiNoContentResponse,
+  ApiOkResponse,
+  ApiOperation,
+  ApiTags,
+} from '@nestjs/swagger';
+import {
+  ApiAuthErrors,
+  SessionTokensDto,
+  refreshTokenRequestSchema,
+} from './auth-openapi.js';
 
 @Controller('auth')
+@ApiTags('세션')
 export class SessionController {
   constructor(
     @Inject(RefreshSessionUseCase)
@@ -27,6 +40,15 @@ export class SessionController {
 
   @Post('token/refresh')
   @HttpCode(HttpStatus.OK)
+  @ApiOperation({
+    summary: '서비스 토큰 갱신',
+    description:
+      'Refresh Token을 회전한다. 동시 갱신을 피하고 성공한 새 토큰으로 교체한다. 기존 토큰 재사용은 해당 세션을 폐기한다.',
+    security: [],
+  })
+  @ApiBody({ required: true, schema: refreshTokenRequestSchema })
+  @ApiOkResponse({ type: SessionTokensDto })
+  @ApiAuthErrors('INVALID_REFRESH_TOKEN: 만료·폐기·재사용·알 수 없는 토큰')
   async refresh(
     @Body(RefreshTokenRequestPipe) request: RefreshTokenRequest,
   ): Promise<SessionTokens> {
@@ -44,6 +66,15 @@ export class SessionController {
 
   @Post('logout')
   @HttpCode(HttpStatus.NO_CONTENT)
+  @ApiOperation({
+    summary: '서비스 세션 로그아웃',
+    description:
+      '해당 Refresh Token의 세션을 폐기한다. 이미 폐기·알 수 없는 토큰도 204이며 다른 기기 세션은 유지한다. 기존 Access Token은 만료까지 유효하다.',
+    security: [],
+  })
+  @ApiBody({ required: true, schema: refreshTokenRequestSchema })
+  @ApiNoContentResponse({ description: '응답 본문 없음' })
+  @ApiAuthErrors()
   async logout(
     @Body(RefreshTokenRequestPipe) request: RefreshTokenRequest,
   ): Promise<void> {

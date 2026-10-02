@@ -6,8 +6,16 @@ import {
   Post,
 } from '@nestjs/common';
 import { StartAppleLoginUseCase } from '@auth/application/start-apple-login.use-case.js';
+import {
+  ApiBody,
+  ApiCreatedResponse,
+  ApiOperation,
+  ApiTags,
+} from '@nestjs/swagger';
+import { ApiAuthErrors, AppleLoginStartResponseDto } from './auth-openapi.js';
 
 @Controller('auth/social/apple')
+@ApiTags('인증')
 export class AppleLoginController {
   constructor(
     @Inject(StartAppleLoginUseCase)
@@ -15,6 +23,18 @@ export class AppleLoginController {
   ) {}
 
   @Post('start')
+  @ApiOperation({
+    summary: 'Apple 로그인 시도와 nonce 생성',
+    description:
+      '5분간 유효한 일회용 시도. nonce를 Apple 인증 요청에 그대로 전달한다.',
+    security: [],
+  })
+  @ApiBody({
+    required: false,
+    schema: { type: 'object', additionalProperties: false, maxProperties: 0 },
+  })
+  @ApiCreatedResponse({ type: AppleLoginStartResponseDto })
+  @ApiAuthErrors()
   start(@Body() body: unknown) {
     if (
       body !== undefined &&
