@@ -30,6 +30,14 @@ describe('SocialLoginRequestPipe', () => {
     expect(() => pipe.transform(body)).toThrow(BadRequestException);
   });
 
+  it('네이버 서버 시도 입력을 보존한다', () => {
+    const body = {
+      provider: 'naver',
+      loginAttemptId: 'a43a185e-b819-44d7-90ca-e11d218c3145',
+      attemptSecret: 'x'.repeat(43),
+    };
+    expect(pipe.transform(body)).toEqual(body);
+  });
   it('네이버 직접 code/state 제출을 거부한다', () => {
     expect(() =>
       pipe.transform({

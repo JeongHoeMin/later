@@ -10,8 +10,8 @@
 | 제공자 요청    | 서버 audience로 ID Token 요청        | Access Token 획득                       | 서버 authorizationUrl을 브라우저로 열기              | 서버 nonce로 Apple 인증                             |
 | 제공자 결과    | 앱에 ID Token                        | 앱에 Access Token                       | 서버 Callback에 code/state 또는 error/state          | 앱에 ID Token                                       |
 | 앱으로 복귀    | SDK 결과                             | SDK 결과                                | 서버 state 검증 후 고정 앱 URI로 303, 시도 ID만 전달 | SDK 결과                                            |
-| 서비스 로그인  | POST /auth/social/login              | POST /auth/social/login                 | POST /auth/social/naver/complete                     | POST /auth/social/login                             |
-| 본문           | provider=google, credential=ID Token | provider=kakao, credential=Access Token | loginAttemptId, attemptSecret                        | provider=apple, credential=ID Token, loginAttemptId |
+| 서비스 로그인  | POST /auth/social/login              | POST /auth/social/login                 | POST /auth/social/login                              | POST /auth/social/login                             |
+| 본문           | provider=google, credential=ID Token | provider=kakao, credential=Access Token | provider=naver, loginAttemptId, attemptSecret        | provider=apple, credential=ID Token, loginAttemptId |
 | 서버 인증      | 서명·issuer·audience·만료·sub        | 토큰 정보 app_id·만료·id                | 저장 시도·비밀값 검증, code 교환·프로필 ID           | 서명·issuer·audience·만료·sub·nonce                 |
 | 서버 시도 보호 | 전용 시도 API 없음                   | 전용 시도 API 없음                      | state 대조·5분 만료·중복 콜백 차단·일회 완료         | nonce 대조·5분 만료·일회 사용                       |
 | 서비스 응답    | 회원 ID와 Later 토큰                 | 동일                                    | 동일                                                 | 동일                                                |
@@ -36,10 +36,11 @@
 4. 네이버는 등록된 **https://later.hoe.pe.kr/auth/social/naver/callback**으로 브라우저를 보낸다. 사용자가 등록을 완료했다. 로그인 Callback이며 연결 끊기 Callback과 다르다. 콘솔의 내 애플리케이션 → API 설정 → 로그인 오픈 API 서비스 환경에서 설정한다.
 5. `GET /auth/social/naver/callback`은 성공 code/state 또는 실패 error/state를 받는다. code/error 동시 제출·중복 query 값·누락·빈 code 등 입력 오류는 400이다. 서버는 저장 state 해시와 대조하고 만료·중복 콜백을 거부한다. code/state는 AES-256-GCM으로 암호화해 일시 저장한다.
 6. 유효하면 고정 NAVER_LOGIN_APP_RETURN_URL에 **303**으로 이동한다. 예: `later://auth/naver?loginAttemptId=UUID`. **앱 반환 URL에는 code·state·attemptSecret·제공자 토큰·서비스 토큰을 넣지 않는다.** 취소도 ID만 전달하며 완료 API에서 401이다. 잘못된 state는 앱으로 리다이렉트하지 않는다.
-7. 앱은 받은 ID가 자신이 보관한 시도와 일치하는지 확인한 뒤 `POST /auth/social/naver/complete`를 호출한다. ID만 아는 다른 앱/브라우저는 완료할 수 없다.
+7. 앱은 받은 ID가 자신이 보관한 시도와 일치하는지 확인한 뒤 `POST /auth/social/login`을 호출한다. ID만 아는 다른 앱/브라우저는 완료할 수 없다.
 
 ```json
 {
+  "provider": "naver",
   "loginAttemptId": "START_RESPONSE_UUID",
   "attemptSecret": "START_RESPONSE_SECRET"
 }
@@ -53,7 +54,7 @@
 
 ## Google·Kakao·Apple 입력
 
-`POST /auth/social/login`은 세 형식만 허용하며 성공은 200이다.
+`POST /auth/social/login`은 네 형식만 허용하며 성공은 200이다.
 
 ```json
 { "provider": "google", "credential": "GOOGLE_ID_TOKEN" }
@@ -137,7 +138,7 @@ Access Token 15분, 서비스 세션 30일. Refresh Token은 플랫폼 보안 �
 
 ## 문서와 검증 범위
 
-모바일 개발자는 GET /docs-json과 GET /docs로 현재 실행 서버의 계약을 확인한다. 네이버 세 경로가 없다면 최신 버전 서버인지 확인하고 재시작/배포한다. 저장소 구현과 실행 서버 버전을 구분한다.
+모바일 개발자는 GET /docs-json과 GET /docs로 현재 실행 서버의 계약을 확인한다. 네이버 시작/콜백과 공통 로그인가 없다면 최신 버전 서버인지 확인하고 재시작/배포한다. 저장소 구현과 실행 서버 버전을 구분한다.
 자동 테스트는 실제 Flow·암호화·네이버 어댑터·JWT를 사용하며 외부 HTTP만 대체한다. DB 통합 테스트는 실제 PostgreSQL로 만료·비밀값·동시 콜백/완료 일회 사용을 검증한다. 실제 네이버 계정·운영 HTTPS·앱 딥링크 동작은 아직 미검증이다.
 
 - [HTTP 계약](../apps/api/src/auth/presentation/http/README.md), [OpenAPI 안내](openapi.md)
@@ -146,3 +147,5 @@ Access Token 15분, 서비스 세션 30일. Refresh Token은 플랫폼 보안 �
 - [Google 서버 토큰 검증](https://developers.google.com/identity/gsi/web/guides/verify-google-id-token)
 - [Kakao 공식 계약](https://developers.kakao.com/docs/latest/ko/kakaologin/rest-api)
 - [OAuth 보안 RFC 9700](https://www.rfc-editor.org/rfc/rfc9700)
+
+최종 서비스 로그인 경로는 네 제공자 모두 POST /auth/social/login으로 통일한다. 이전 /auth/social/naver/complete는 제거되어 404이며 클라이언트는 공통 경로와 provider=naver 본문을 사용해야 한다.

@@ -64,7 +64,6 @@ describe('OpenAPI 조회 (e2e)', () => {
       '/auth/social/apple/start',
       '/auth/social/naver/start',
       '/auth/social/naver/callback',
-      '/auth/social/naver/complete',
       '/auth/token/refresh',
       '/auth/logout',
       '/documentation-test',
@@ -111,9 +110,19 @@ describe('OpenAPI 조회 (e2e)', () => {
     expect(callback.responses['303'].headers.Location.schema.type).toBe(
       'string',
     );
-    const complete = document.paths['/auth/social/naver/complete'].post;
-    const schema = complete.requestBody.content['application/json'].schema;
-    expect(schema.required).toEqual(['loginAttemptId', 'attemptSecret']);
+    expect(document.paths['/auth/social/naver/complete']).toBeUndefined();
+    const complete = document.paths['/auth/social/login'].post;
+    const schema = complete.requestBody.content[
+      'application/json'
+    ].schema.oneOf.find(
+      (value: { properties: { provider: { enum: string[] } } }) =>
+        value.properties.provider.enum[0] === 'naver',
+    );
+    expect(schema.required).toEqual([
+      'provider',
+      'loginAttemptId',
+      'attemptSecret',
+    ]);
     expect(schema.additionalProperties).toBe(false);
     expect(
       complete.responses['200'].content['application/json'].schema.$ref,
@@ -135,11 +144,12 @@ describe('OpenAPI 조회 (e2e)', () => {
     const operation = document.paths['/auth/social/login'].post;
     expect(operation.requestBody).toBeDefined();
     const schema = operation.requestBody.content['application/json'].schema;
-    expect(schema.oneOf).toHaveLength(3);
+    expect(schema.oneOf).toHaveLength(4);
     const models = schema.oneOf;
     for (const [provider, extra] of [
       ['google', undefined],
       ['kakao', undefined],
+      ['naver', 'loginAttemptId'],
       ['apple', 'loginAttemptId'],
     ]) {
       const model = models.find(
@@ -147,7 +157,11 @@ describe('OpenAPI 조회 (e2e)', () => {
           value.properties.provider.enum[0] === provider,
       );
       expect(model.required).toEqual(
-        extra ? ['provider', 'credential', extra] : ['provider', 'credential'],
+        provider === 'naver'
+          ? ['provider', 'loginAttemptId', 'attemptSecret']
+          : extra
+            ? ['provider', 'credential', extra]
+            : ['provider', 'credential'],
       );
       expect(model.additionalProperties).toBe(false);
       expect(Object.keys(model.properties)).toEqual(model.required);
@@ -247,9 +261,10 @@ describe('OpenAPI 조회 (e2e)', () => {
             true,
           );
       }
-      expect(new RegExp(model.properties.credential.pattern).test('   ')).toBe(
-        false,
-      );
+      if (model.properties.credential)
+        expect(
+          new RegExp(model.properties.credential.pattern).test('   '),
+        ).toBe(false);
       for (const required of model.required) {
         const invalid = { ...example.value };
         delete invalid[required];

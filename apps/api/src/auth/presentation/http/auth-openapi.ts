@@ -22,6 +22,7 @@ const credentialSchema: SchemaObject = {
 export const socialLoginRequestSchemas: SchemaObject[] = [
   'google',
   'kakao',
+  'naver',
   'apple',
 ].map((provider) => {
   const properties: Record<string, SchemaObject> = {
@@ -37,6 +38,20 @@ export const socialLoginRequestSchemas: SchemaObject[] = [
       description: 'Apple start API에서 발급한 UUID v4',
     };
     required.push('loginAttemptId');
+  }
+  if (provider === 'naver') {
+    delete properties.credential;
+    required.splice(1, 1, 'loginAttemptId', 'attemptSecret');
+    properties.loginAttemptId = {
+      type: 'string',
+      format: 'uuid',
+      pattern: APPLE_LOGIN_ATTEMPT_ID_PATTERN,
+    };
+    properties.attemptSecret = {
+      type: 'string',
+      pattern: '^[A-Za-z0-9_-]{43}$',
+      description: '시작 응답에서 보관한 비밀값',
+    };
   }
   return { type: 'object', properties, required, additionalProperties: false };
 });

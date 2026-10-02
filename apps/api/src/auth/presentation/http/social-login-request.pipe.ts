@@ -3,6 +3,7 @@ import { isAppleLoginAttemptId } from '@auth/domain/apple-login-attempt.js';
 
 export type SocialLoginRequest =
   | { provider: 'google' | 'kakao'; credential: string }
+  | { provider: 'naver'; loginAttemptId: string; attemptSecret: string }
   | { provider: 'apple'; credential: string; loginAttemptId: string };
 
 export class SocialLoginRequestPipe implements PipeTransform<
@@ -15,15 +16,32 @@ export class SocialLoginRequestPipe implements PipeTransform<
     }
 
     const body = value as Record<string, unknown>;
+    if (body.provider === 'naver') {
+      if (
+        !isAppleLoginAttemptId(body.loginAttemptId) ||
+        typeof body.attemptSecret !== 'string' ||
+        !/^[A-Za-z0-9_-]{43}$/.test(body.attemptSecret) ||
+        Object.keys(body).some(
+          (key) =>
+            !['provider', 'loginAttemptId', 'attemptSecret'].includes(key),
+        )
+      )
+        throw new BadRequestException([
+          '네이버는 서버 발급 시도 ID와 비밀값만 제출해야 합니다.',
+        ]);
+      return {
+        provider: 'naver',
+        loginAttemptId: body.loginAttemptId as string,
+        attemptSecret: body.attemptSecret,
+      };
+    }
     const errors: string[] = [];
     if (
       body.provider !== 'google' &&
       body.provider !== 'kakao' &&
       body.provider !== 'apple'
     )
-      errors.push(
-        'provider는 google, kakao 또는 apple (네이버는 전용 시작·콜백·완료 API 사용)이어야 합니다.',
-      );
+      errors.push('provider는 google, kakao, naver 또는 apple이어야 합니다.');
     if (typeof body.credential !== 'string' || !body.credential.trim()) {
       errors.push('credential은 비어 있지 않은 문자열이어야 합니다.');
     }

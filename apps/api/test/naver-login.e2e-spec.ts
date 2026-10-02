@@ -165,7 +165,8 @@ describe('네이버 소셜 로그인 (e2e)', () => {
   async function login() {
     const started = await startLogin();
     await callback(currentState).expect(303);
-    return post('/auth/social/naver/complete', {
+    return post('/auth/social/login', {
+      provider: 'naver',
       loginAttemptId: started.loginAttemptId,
       attemptSecret: started.attemptSecret,
     });
@@ -268,32 +269,35 @@ describe('네이버 소셜 로그인 (e2e)', () => {
     );
     expect(result.headers['cache-control']).toBe('no-store');
     expect(result.headers['referrer-policy']).toBe('no-referrer');
-    const complete = await post('/auth/social/naver/complete', {
+    const complete = await post('/auth/social/login', {
+      provider: 'naver',
       loginAttemptId: start.loginAttemptId,
       attemptSecret: start.attemptSecret,
     }).expect(200);
     expect(complete.headers['cache-control']).toBe('no-store');
     await request(app.getHttpServer())
       .get('/auth/me')
+      .set('Connection', 'keep-alive')
       .set('Authorization', 'Bearer ' + complete.body.accessToken)
       .expect(200);
   });
   it('불일치·대기·재사용을 거부한다', async () => {
     const start = await startLogin();
     const body = {
+      provider: 'naver',
       loginAttemptId: start.loginAttemptId,
       attemptSecret: start.attemptSecret,
     };
     await callback('unknown').expect(401);
-    await post('/auth/social/naver/complete', body).expect(401);
+    await post('/auth/social/login', body).expect(401);
     await callback(currentState).expect(303);
-    await post('/auth/social/naver/complete', {
+    await post('/auth/social/login', {
       ...body,
       attemptSecret: 'x'.repeat(43),
     }).expect(401);
     expect(http).not.toHaveBeenCalled();
-    await post('/auth/social/naver/complete', body).expect(200);
-    await post('/auth/social/naver/complete', body).expect(401);
+    await post('/auth/social/login', body).expect(200);
+    await post('/auth/social/login', body).expect(401);
     await callback(currentState).expect(401);
     expect(http).toHaveBeenCalledTimes(2);
   });
@@ -303,7 +307,8 @@ describe('네이버 소셜 로그인 (e2e)', () => {
       error: 'access_denied',
       error_description: 'cancelled',
     }).expect(303);
-    await post('/auth/social/naver/complete', {
+    await post('/auth/social/login', {
+      provider: 'naver',
       loginAttemptId: start.loginAttemptId,
       attemptSecret: start.attemptSecret,
     }).expect(401);
@@ -312,22 +317,43 @@ describe('네이버 소셜 로그인 (e2e)', () => {
     await callback(currentState).expect(401);
     expect(http).not.toHaveBeenCalled();
   });
+  it.each(['credential', 'state', 'code'])(
+    '네이버 시도와 %s 혼합을 거부한다',
+    async (key) => {
+      await post('/auth/social/login', {
+        provider: 'naver',
+        loginAttemptId: 'a43a185e-b819-44d7-90ca-e11d218c3145',
+        attemptSecret: 'x'.repeat(43),
+        [key]: 'injected',
+      }).expect(400);
+      expect(http).not.toHaveBeenCalled();
+    },
+  );
+  it('전용 완료 경로는 제거한다', async () => {
+    await post('/auth/social/naver/complete', {}).expect(404);
+  });
   it('입력과 설정 오류를 구분한다', async () => {
     await post('/auth/social/naver/start', { extra: 'field' }).expect(400);
     for (const body of [
       {},
-      { loginAttemptId: 'invalid', attemptSecret: 'x'.repeat(43) },
       {
+        provider: 'naver',
+        loginAttemptId: 'invalid',
+        attemptSecret: 'x'.repeat(43),
+      },
+      {
+        provider: 'naver',
         loginAttemptId: 'a43a185e-b819-44d7-90ca-e11d218c3145',
         attemptSecret: 'short',
       },
       {
+        provider: 'naver',
         loginAttemptId: 'a43a185e-b819-44d7-90ca-e11d218c3145',
         attemptSecret: 'x'.repeat(43),
         code: 'injected',
       },
     ])
-      await post('/auth/social/naver/complete', body).expect(400);
+      await post('/auth/social/login', body).expect(400);
     for (const query of [
       {},
       { state: 'valid', code: '' },

@@ -2,7 +2,7 @@
 
 `POST /auth/social/login`
 
-구글·Apple ID 토큰과 카카오 Access Token을 지원한다. 기존 회원을 조회하거나 신규 회원을 생성한다. 네이버는 아래 전용 시작·콜백·완료 경로를 사용한다.
+구글·Apple ID 토큰, 카카오 Access Token, 네이버 서버 시도 ID/비밀값을 지원한다. 최종 서비스 로그인은 이 공통 경로로 통일한다.
 모바일 로그인 과정과 state/nonce 책임은 [로그인 프로세스](../../../../../../docs/social-login-process.md)를 참고한다.
 
 ```json
@@ -12,8 +12,8 @@
 }
 ```
 
-- provider는 `google`, `kakao` 또는 `apple`이어야 한다.
-- credential은 비어 있지 않은 문자열이어야 한다.
+- provider는 `google`, `kakao`, `naver` 또는 `apple`이어야 한다.
+- Google/Kakao/Apple credential은 비어 있지 않은 문자열이어야 한다. 네이버는 credential 없이 loginAttemptId/attemptSecret을 제출한다.
 - 추가 필드와 잘못된 본문은 400으로 거부한다.
 - 회원 식별에는 검증된 구글 토큰의 sub를 사용한다.
 
@@ -42,7 +42,7 @@
 
 1. POST /auth/social/naver/start: 본문 없음 또는 {}. 201 {loginAttemptId, attemptSecret, authorizationUrl, expiresIn:300}. 앱은 ID/비밀값을 보관하고 URL을 브라우저로 연다.
 2. GET /auth/social/naver/callback: 네이버의 code/state 또는 error/state를 서버가 받는다. state 해시·만료·미사용 콜백을 검증하고 암호화 grant를 일시 저장한다. 303 Location은 고정 앱 URI와 loginAttemptId만 포함한다. code/state/비밀값/토큰을 앱 URL에 전달하지 않는다. 취소도 앱에 ID만 반환한다.
-3. POST /auth/social/naver/complete: {loginAttemptId, attemptSecret}. 앱 보관 비밀값·콜백 완료·5분 만료·일회 사용을 검증한 뒤 서버 code 교환·프로필 확인·회원/세션 발급. 성공 200은 아래 공통 응답. 준비 전·불일치·만료·재사용·취소는 401 SOCIAL_AUTHENTICATION_FAILED. 입력 400, 설정/외부 장애 503 INTERNAL_SERVER_ERROR.
+3. POST /auth/social/login: {provider:naver, loginAttemptId, attemptSecret}. 앱 보관 비밀값·콜백 완료·5분 만료·일회 사용을 검증한 뒤 서버 code 교환·프로필 확인·회원/세션 발급. 성공 200은 아래 공통 응답. 준비 전·불일치·만료·재사용·취소는 401 SOCIAL_AUTHENTICATION_FAILED. 입력 400, 설정/외부 장애 503 INTERNAL_SERVER_ERROR.
 
 서버 NAVER_LOGIN_CALLBACK_URL은 https://later.hoe.pe.kr/auth/social/naver/callback (사용자 콘솔 등록 완료). NAVER_LOGIN_APP_RETURN_URL은 실제 앱 URI로 설정해야 한다. later://auth/naver는 예시이며 실제 값은 아직 미제공. NAVER_LOGIN_BRIDGE_KEY는 별도 32바이트 무작위 base64url 키다. 브리지 설정은 사용 시 검사하며 누락이면 503이다.
 

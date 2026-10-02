@@ -1,0 +1,10 @@
+id: TASK-01M3XG6KDETGA2N94DEXGS7A7W
+title: 네이버 최종 로그인을 공통 소셜 로그인 경로로 통합
+status: completed
+phase: completed
+priority: normal
+created_at: 2026-10-02T14:08:12.846+09:00
+updated_at: 2026-10-02T14:11:58.170+09:00
+current_summary: 네 제공자 최종 로그인 경로 통합, 네이버 보호 유지 및 전체 검증 완료.
+next_action: null
+blocked_by: null

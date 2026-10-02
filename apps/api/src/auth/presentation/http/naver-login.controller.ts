@@ -4,7 +4,6 @@ import {
   Controller,
   Get,
   Header,
-  HttpCode,
   Inject,
   Post,
   Query,
@@ -15,7 +14,6 @@ import {
 import {
   ApiBody,
   ApiCreatedResponse,
-  ApiOkResponse,
   ApiOperation,
   ApiProperty,
   ApiQuery,
@@ -26,8 +24,7 @@ import type { Response } from 'express';
 import { NaverLoginFlow } from '@auth/application/naver-login-flow.js';
 import { SocialAuthenticationFailedError } from '@auth/domain/errors/social-authentication-failed.error.js';
 import { SocialAuthenticationUnavailableError } from '@auth/domain/errors/social-authentication-unavailable.error.js';
-import { isAppleLoginAttemptId } from '@auth/domain/apple-login-attempt.js';
-import { ApiAuthErrors, SocialLoginResponseDto } from './auth-openapi.js';
+import { ApiAuthErrors } from './auth-openapi.js';
 
 export class NaverLoginStartResponseDto {
   @ApiProperty({ type: String, format: 'uuid' }) declare loginAttemptId: string;
@@ -133,60 +130,6 @@ export class NaverLoginController {
       ),
     );
     response.status(303).setHeader('Location', location);
-  }
-
-  @Post('complete')
-  @HttpCode(200)
-  @Header('Cache-Control', 'no-store')
-  @ApiOperation({
-    summary: '네이버 로그인 완료와 서비스 토큰 발급',
-    description:
-      '앱에 보관한 시도 ID와 비밀값으로 완료한다. Callback 완료 후 일회 사용. 외부 인증·저장 실패 또는 응답 유실 시 새 로그인 시도가 필요하다.',
-    security: [],
-  })
-  @ApiBody({
-    required: true,
-    schema: {
-      type: 'object',
-      additionalProperties: false,
-      required: ['loginAttemptId', 'attemptSecret'],
-      properties: {
-        loginAttemptId: {
-          type: 'string',
-          format: 'uuid',
-          pattern:
-            '^[0-9a-fA-F]{8}-[0-9a-fA-F]{4}-4[0-9a-fA-F]{3}-[89abAB][0-9a-fA-F]{3}-[0-9a-fA-F]{12}$',
-        },
-        attemptSecret: { type: 'string', pattern: '^[A-Za-z0-9_-]{43}$' },
-      },
-    },
-  })
-  @ApiOkResponse({ type: SocialLoginResponseDto })
-  @ApiAuthErrors(
-    'SOCIAL_AUTHENTICATION_FAILED: 준비 전·만료·불일치·재사용·취소',
-    true,
-  )
-  async complete(@Body() value: unknown) {
-    if (!value || typeof value !== 'object' || Array.isArray(value))
-      throw new BadRequestException(['완료 요청은 객체여야 합니다.']);
-    const body = value as Record<string, unknown>;
-    if (
-      !isAppleLoginAttemptId(body.loginAttemptId) ||
-      typeof body.attemptSecret !== 'string' ||
-      !/^[A-Za-z0-9_-]{43}$/.test(body.attemptSecret) ||
-      Object.keys(body).some(
-        (key) => !['loginAttemptId', 'attemptSecret'].includes(key),
-      )
-    )
-      throw new BadRequestException([
-        '서버 발급 시도 ID와 비밀값이 필요합니다.',
-      ]);
-    return this.handle(() =>
-      this.flow.complete(
-        body.loginAttemptId as string,
-        body.attemptSecret as string,
-      ),
-    );
   }
 
   private async handle<T>(action: () => Promise<T>): Promise<T> {
