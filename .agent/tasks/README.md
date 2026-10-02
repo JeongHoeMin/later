@@ -27,5 +27,6 @@ TASK-003~007은 TASK-008 추가 전의 기록이다. 현재 지원 provider와 �
 
 TASK-008의 카카오 Access Token 검증·HTTP 지원은 완료했다. 현재 활성 Product Task나 RED 상태 테스트는 없다.
 네이버 어댑터와 모바일에서 실제 제공자 로그인은 아직 구현·검증하지 않았다.
-TASK-008 완료 후 다음 네이버 작업을 제안하고 승인받는다. 승인되면 TASK-009를 만들고 공식 계약 확인→R/AC/Test 설계→RED 순서로 시작한다.
+[TASK-009](TASK-009/task.yaml)는 다른 세션용 네이버 로그인 작업 초안이다. 문서 준비만 승인되었으며 status=pending, phase=requirement다.
+다음 세션은 TASK-009 네 문서를 읽고 공식 계약 확인→인증 방식 제안·구현 승인→Test 설계→RED 순서로 시작한다.
 feat/auth 작업은 아직 main에 병합하지 않았다. auth 브랜치를 push하거나 PR을 병합하는 것은 별도 승인 범위다.
