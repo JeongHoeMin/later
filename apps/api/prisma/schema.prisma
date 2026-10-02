@@ -32,6 +32,19 @@ model AppleLoginAttempt {
   @@index([expiresAt])
 }
 
+model NaverLoginAttempt {
+  id          String    @id @db.Uuid
+  stateHash   String    @unique @db.Char(64)
+  secretHash  String    @db.Char(64)
+  expiresAt   DateTime
+  sealedGrant String?
+  callbackAt  DateTime?
+  usedAt      DateTime?
+  createdAt   DateTime  @default(now())
+
+  @@index([expiresAt])
+}
+
 model User {
   id             String          @id @default(uuid()) @db.Uuid
   createdAt      DateTime        @default(now())
