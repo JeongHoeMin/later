@@ -17,6 +17,7 @@ function builder() {
 
 describe('AuthModule', () => {
   beforeEach(() => {
+    vi.stubEnv('APPLE_CLIENT_IDS', 'com.later.test');
     vi.stubEnv('NAVER_CLIENT_ID', 'our-naver-client');
     vi.stubEnv('NAVER_CLIENT_SECRET', 'our-naver-secret');
     vi.stubEnv('KAKAO_APP_ID', '1234');
@@ -24,6 +25,19 @@ describe('AuthModule', () => {
       'ACCESS_TOKEN_SECRET',
       'test-only-access-secret-with-at-least-32-bytes',
     );
+  });
+
+  it('Apple 앱 ID 누락은 모듈 구성을 거부한다', async () => {
+    vi.stubEnv('GOOGLE_CLIENT_ID', clientId);
+    vi.stubEnv('APPLE_CLIENT_IDS', '');
+    await expect(
+      builder()
+        .compile()
+        .then(async (module) => {
+          await module.close();
+          return 'compiled';
+        }),
+    ).rejects.toThrow('APPLE_CLIENT_IDS');
   });
 
   it.each(['NAVER_CLIENT_ID', 'NAVER_CLIENT_SECRET'])(

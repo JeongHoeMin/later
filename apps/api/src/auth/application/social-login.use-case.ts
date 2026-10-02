@@ -9,6 +9,7 @@ export type SocialLoginCommand = {
   provider: SocialProvider;
   credential: string;
   state?: string;
+  loginAttemptId?: string;
 };
 
 export class SocialLoginUseCase {
@@ -32,7 +33,9 @@ export class SocialLoginUseCase {
 
     const identity = await (command.provider === 'naver'
       ? adapter.authenticate(command.credential, command.state)
-      : adapter.authenticate(command.credential));
+      : command.provider === 'apple'
+        ? adapter.authenticate(command.credential, command.loginAttemptId)
+        : adapter.authenticate(command.credential));
 
     if (!identity.subject.trim()) {
       throw new SocialAuthenticationFailedError();

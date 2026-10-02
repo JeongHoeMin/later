@@ -31,6 +31,7 @@ describe('세션 갱신과 로그아웃 (e2e)', () => {
   beforeAll(async () => {
     vi.stubEnv('GOOGLE_CLIENT_ID', 'test-client');
     vi.stubEnv('KAKAO_APP_ID', '1234');
+    vi.stubEnv('APPLE_CLIENT_IDS', 'com.later.test');
     vi.stubEnv('NAVER_CLIENT_ID', 'test-naver-client');
     vi.stubEnv('NAVER_CLIENT_SECRET', 'test-naver-secret');
     vi.stubEnv('ACCESS_TOKEN_SECRET', secret);

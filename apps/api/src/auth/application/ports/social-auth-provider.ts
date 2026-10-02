@@ -5,5 +5,9 @@ import type {
 
 export interface SocialAuthProvider {
   readonly provider: SocialProvider;
-  authenticate(credential: string, state?: string): Promise<SocialIdentity>;
+  // Naver: state; Apple: server-issued loginAttemptId. Other providers omit it.
+  authenticate(
+    credential: string,
+    requestContext?: string,
+  ): Promise<SocialIdentity>;
 }

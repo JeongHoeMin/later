@@ -69,6 +69,7 @@ describe('공통 오류 응답 (e2e)', () => {
   beforeAll(async () => {
     vi.stubEnv('GOOGLE_CLIENT_ID', 'e2e-client.apps.googleusercontent.com');
     vi.stubEnv('KAKAO_APP_ID', '1234');
+    vi.stubEnv('APPLE_CLIENT_IDS', 'com.later.test');
     vi.stubEnv('NAVER_CLIENT_ID', 'test-naver-client');
     vi.stubEnv('NAVER_CLIENT_SECRET', 'test-naver-secret');
     vi.stubEnv(

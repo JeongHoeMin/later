@@ -19,6 +19,17 @@ enum SocialProvider {
   google
   kakao
   naver
+  apple
+}
+
+model AppleLoginAttempt {
+  id        String    @id @db.Uuid
+  nonceHash String    @db.Char(64)
+  expiresAt DateTime
+  usedAt    DateTime?
+  createdAt DateTime  @default(now())
+
+  @@index([expiresAt])
 }
 
 model User {

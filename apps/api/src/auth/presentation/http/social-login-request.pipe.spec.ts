@@ -4,6 +4,31 @@ import { SocialLoginRequestPipe } from './social-login-request.pipe.js';
 
 describe('SocialLoginRequestPipe', () => {
   const pipe = new SocialLoginRequestPipe();
+  it('Apple ID 토큰과 서버 로그인 시도 ID를 보존한다', () => {
+    const body = {
+      provider: 'apple',
+      credential: 'id-token',
+      loginAttemptId: 'a43a185e-b819-44d7-90ca-e11d218c3145',
+    };
+    expect(pipe.transform(body)).toEqual(body);
+  });
+  it.each([
+    { provider: 'apple', credential: 'token' },
+    { provider: 'apple', credential: 'token', loginAttemptId: 'invalid' },
+    {
+      provider: 'apple',
+      credential: 'token',
+      loginAttemptId: 'a43a185e-b819-44d7-90ca-e11d218c3145',
+      nonce: 'client-input',
+    },
+    {
+      provider: 'google',
+      credential: 'token',
+      loginAttemptId: 'a43a185e-b819-44d7-90ca-e11d218c3145',
+    },
+  ])('잘못된 Apple 입력과 다른 제공자의 시도 ID를 거부한다', (body) => {
+    expect(() => pipe.transform(body)).toThrow(BadRequestException);
+  });
 
   it('네이버 인가 코드와 state를 보존한다', () => {
     expect(

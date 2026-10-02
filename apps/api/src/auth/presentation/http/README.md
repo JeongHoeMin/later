@@ -2,7 +2,7 @@
 
 `POST /auth/social/login`
 
-구글 ID 토큰, 카카오 Access Token, 네이버 인가 코드를 지원한다. 같은 경로에서 기존 회원을 조회하거나 신규 회원을 생성한다.
+구글·Apple ID 토큰, 카카오 Access Token, 네이버 인가 코드를 지원한다. 같은 경로에서 기존 회원을 조회하거나 신규 회원을 생성한다.
 모바일 로그인 과정과 state/nonce 책임은 [로그인 프로세스](../../../../../../docs/social-login-process.md)를 참고한다.
 
 ```json
@@ -12,7 +12,7 @@
 }
 ```
 
-- provider는 `google`, `kakao` 또는 `naver`여야 한다.
+- provider는 `google`, `kakao`, `naver` 또는 `apple`이어야 한다.
 - credential은 비어 있지 않은 문자열이어야 한다.
 - 추가 필드와 잘못된 본문은 400으로 거부한다.
 - 회원 식별에는 검증된 구글 토큰의 sub를 사용한다.
@@ -53,6 +53,39 @@
 모바일은 원래 로그인 시도와 state를 대조하고 만료·중복 콜백을 차단한 뒤 호출해야 한다.
 현재 서버에는 state를 발급하거나 원래 값과 대조하는 기능이 없다.
 네이버 인증 실패는 401, 외부 장애·통신·timeout·비정상 응답은 공통 503이며 실패 시 회원·세션을 처리하지 않는다.
+
+## Apple 로그인
+
+먼저 본문 없이 `POST /auth/social/apple/start`를 호출한다. 빈 객체도 허용하며 입력 필드는 거부한다. 성공 응답은 201이다.
+
+```json
+{
+  "loginAttemptId": "서버가 발급한 UUID",
+  "nonce": "서버가 생성한 무작위 문자열",
+  "expiresIn": 300
+}
+```
+
+모바일은 `nonce`를 Apple 인증 요청에 그대로 전달하고 반환된 ID 토큰으로 기존 로그인 API를 호출한다.
+
+```json
+{
+  "provider": "apple",
+  "credential": "APPLE_ID_TOKEN",
+  "loginAttemptId": "시작 응답의 UUID"
+}
+```
+
+서버는 고정 `https://appleid.apple.com/auth/keys`의 공개 키로 RS256 서명, issuer, 설정된 audience, exp, sub·nonce를 검증한다.
+검증된 토큰의 nonce 해시가 DB의 로그인 시도와 일치하고 5분 만료 전이며 미사용일 때만 원자적으로 소비한다. 클라이언트가 nonce나 subject를 추가로 제출할 수 없다.
+회원 식별은 `(apple, sub)`이며 Apple 이메일·이름은 수집하거나 자동 계정 통합에 사용하지 않는다.
+`APPLE_CLIENT_IDS`는 쉼표로 구분한 공백 없는 허용 목록이다. iOS Bundle ID 및 웹/Android Services ID 중 실제 사용 중인 값만 등록한다. 누락·빈 항목은 모듈 구성을 거부한다.
+JWKS 조회는 5초 제한·redirect 거부·캐시·키 교체를 적용한다. 잘못된 토큰·불일치·만료·재사용은 401, 공개 키 통신 장애·비정상 응답은 503이다.
+시도는 회원·세션 처리 전에 소비된다. 로그인 응답 유실이나 이후 DB 실패 시 같은 요청을 재전송하지 말고 새 시도로 재시작한다. 서비스 토큰 발급 성공 응답은 위 제공자와 같은 200 형식이다.
+DB에는 nonce 원문과 Apple ID 토큰을 저장하지 않는다. 만료·사용 완료 행의 자동 삭제 작업은 아직 없으므로 운영 시 만료 행 정리 정책을 구성한다.
+Apple code 교환·제공자 refresh/revoke는 구현하지 않았다. 서비스의 refresh token은 Apple refresh token과 별개다.
+
+## 로그인 성공 응답
 
 ```json
 {

@@ -1,22 +1,22 @@
 # 모바일 소셜 로그인 구현 참고
 
-기준: feat/auth, TASK-01M3X3N5YE122YB2CP9Z2642J7, 2026-10-02. 이 문서는 API 계약과 모바일에서 구현할 책임을 설명한다.
-API의 구글·카카오·네이버 인증은 구현되어 있다. 모바일 로그인 화면은 main에서 반영되었다. 실제 제공자 SDK·서버 로그인 연동·콜백·로그인 시도 보호는 아직 구현하지 않았다.
+기준: feat/auth, TASK-01M3X599CCKHC50NX77KD3AGJX, 2026-10-02. 이 문서는 API 계약과 모바일에서 구현할 책임을 설명한다.
+API의 구글·카카오·네이버·Apple 인증과 Apple 서버 로그인 시도 보호는 구현되어 있다. 모바일 로그인 화면은 main에서 반영되었다. 실제 제공자 SDK·서버 로그인 연동·콜백 처리는 아직 구현하지 않았다.
 
-현재 화면은 카카오·애플·구글 버튼이며 네이버 버튼은 없다. App.tsx의 onLogin은 실제 인증 없이 임시 상태만 바꾼다. API 지원 제공자(구글·카카오·네이버)와 화면을 연결하는 작업은 후속 모바일 범위다.
+현재 화면은 카카오·애플·구글 버튼이며 네이버 버튼은 없다. App.tsx의 onLogin은 실제 인증 없이 임시 상태만 바꾼다. API 지원 제공자(구글·카카오·네이버·Apple)와 화면을 연결하는 작업은 후속 모바일 범위다.
 
 ## 제공자별 전체 흐름
 
-| 단계               | 구글                                                            | 카카오                                  | 네이버                                               |
-| ------------------ | --------------------------------------------------------------- | --------------------------------------- | ---------------------------------------------------- |
-| 로그인 시작        | 모바일에서 Google 로그인                                        | 모바일에서 Kakao 로그인                 | 모바일에서 Naver 인가 요청                           |
-| 사용자 로그인·동의 | Google에서 처리                                                 | Kakao에서 처리                          | Naver에서 처리                                       |
-| 모바일이 얻는 값   | ID Token                                                        | Access Token                            | 인가 코드(code)와 state                              |
-| API에 전달         | provider=google, credential=ID Token                            | provider=kakao, credential=Access Token | provider=naver, credential=code, state               |
-| API 인증           | Google 라이브러리로 토큰 검증                                   | 토큰 정보 API 호출                      | 서버의 Client ID·Secret으로 코드 교환 후 프로필 조회 |
-| 발급 대상 앱 확인  | audience가 GOOGLE_CLIENT_ID와 일치                              | app_id가 KAKAO_APP_ID와 일치            | 우리 앱의 Client ID·Secret을 사용한 코드 교환        |
-| 회원 식별          | 검증된 sub                                                      | 검증된 id                               | 프로필 response.id                                   |
-| 서비스 로그인      | 검증된 (provider, subject)로 회원 조회·생성 후 서비스 토큰 발급 | 동일                                    | 동일                                                 |
+| 단계             | 구글                       | 카카오                  | 네이버                         | Apple                                                     |
+| ---------------- | -------------------------- | ----------------------- | ------------------------------ | --------------------------------------------------------- |
+| 로그인 시작      | 모바일 Google 로그인       | 모바일 Kakao 로그인     | 모바일 Naver 인가 요청         | 서버 start 호출 후 nonce로 Apple 로그인                   |
+| 모바일이 얻는 값 | ID Token                   | Access Token            | code·state                     | ID Token                                                  |
+| API 입력         | credential=ID Token        | credential=Access Token | credential=code·state          | credential=ID Token·loginAttemptId                        |
+| API 인증         | Google 라이브러리 검증     | 토큰 정보 API           | 서버 code 교환·프로필 조회     | Apple 공개 키로 JWT 검증·nonce 시도 소비                  |
+| 앱 귀속 확인     | GOOGLE_CLIENT_ID audience  | KAKAO_APP_ID app_id     | 우리 Client ID·Secret으로 교환 | APPLE_CLIENT_IDS audience                                 |
+| 회원 식별        | sub                        | id                      | response.id                    | sub                                                       |
+| 로그인 시도 연결 | 모바일 보호 후속 구현      | 모바일 보호 후속 구현   | 모바일 state 대조 후속 구현    | 서버 nonce 대조·5분 만료·일회 사용, 모바일 연동 후속 구현 |
+| 서비스 로그인    | 회원 연결·서비스 토큰 발급 | 동일                    | 동일                           | 동일                                                      |
 
 이메일이 같아도 계정을 자동 통합하지 않는다. 모바일이 보낸 subject로 인증하지 않는다.
 제공자 토큰과 서비스 토큰은 서로 다르다. 이후 Later API에는 Later의 Access Token을 사용한다.
@@ -42,7 +42,7 @@ API의 구글·카카오·네이버 인증은 구현되어 있다. 모바일 로
 ```
 
 구글·카카오에는 state 필드를 보내지 않는다. 네이버에는 비어 있지 않고 공백 없는 state가 필수다.
-provider/credential 및 네이버의 state 이외의 필드는 거부한다. API는 네이버 Access Token 직접 제출을 지원하지 않는다.
+provider/credential 및 네이버의 state, Apple의 loginAttemptId 이외의 필드는 거부한다. API는 네이버 Access Token 직접 제출을 지원하지 않는다.
 
 ```json
 {
@@ -66,7 +66,7 @@ audience/app_id 확인이나 서버 코드 교환만으로 두 번째 검증을 
 
 state는 OAuth 리다이렉트 요청과 응답을 연결하는 무작위 값이다. nonce는 OIDC ID Token을 로그인 요청과 연결하는 값이다.
 모든 제공자에 같은 state 필드를 붙이는 방식은 아니다. 사용할 SDK·리다이렉트·토큰 흐름에 따라 책임을 확인한다.
-현재 API는 로그인 시작 엔드포인트, state 보관·원본 대조·일회 사용 검증, 구글 nonce 대조를 구현하지 않는다.
+구글·카카오·네이버에는 서버 로그인 시작·시도 저장·일회 사용 기능이 없다. 구글 nonce 대조도 구현하지 않는다. Apple에는 아래 서버 시작·nonce 검증·일회 사용 기능이 있다.
 네이버 state는 형식 검증 후 토큰 교환 요청에 전달할 뿐이다. 이것을 서버의 CSRF 검증으로 표현하면 안 된다.
 
 ## 네이버 모바일 구현 순서
@@ -92,16 +92,16 @@ SDK·딥링크 선택 및 실제 앱 로그인은 모바일 작업에서 검증�
 
 ## 오류와 운영 설정
 
-| 결과                                                | HTTP / error.code                  | 모바일 처리                                               |
-| --------------------------------------------------- | ---------------------------------- | --------------------------------------------------------- |
-| 입력 형식 오류                                      | 400 / BAD_REQUEST                  | 요청 구현 확인                                            |
-| 인증 실패                                           | 401 / SOCIAL_AUTHENTICATION_FAILED | 새 제공자 로그인 시작                                     |
-| 네이버·카카오 외부 장애, 통신·타임아웃, 비정상 응답 | 503 / INTERNAL_SERVER_ERROR        | 사용자에게 일시 실패 안내; 네이버는 새 로그인 시도로 재개 |
-| 예상하지 못한 서버 오류                             | 500 / INTERNAL_SERVER_ERROR        | 오류 처리; 토큰 원문을 로그에 기록하지 않음               |
+| 결과                                       | HTTP / error.code                  | 모바일 처리                                               |
+| ------------------------------------------ | ---------------------------------- | --------------------------------------------------------- |
+| 입력 형식 오류                             | 400 / BAD_REQUEST                  | 요청 구현 확인                                            |
+| 인증 실패                                  | 401 / SOCIAL_AUTHENTICATION_FAILED | 새 제공자 로그인 시작                                     |
+| 네이버·카카오 외부 장애 및 Apple JWKS 장애 | 503 / INTERNAL_SERVER_ERROR        | 사용자에게 일시 실패 안내; 네이버는 새 로그인 시도로 재개 |
+| 예상하지 못한 서버 오류                    | 500 / INTERNAL_SERVER_ERROR        | 오류 처리; 토큰 원문을 로그에 기록하지 않음               |
 
 현재 구글 어댑터는 라이브러리 검증 오류를 401로 통일한다. 네이버·카카오의 장애 분류와 동일하다고 가정하지 않는다.
 네이버와 카카오 외부 요청은 각각 5초 제한을 적용하고 redirect를 따라가지 않는다.
-설정: 서버의 GOOGLE_CLIENT_ID, KAKAO_APP_ID, NAVER_CLIENT_ID, NAVER_CLIENT_SECRET 및 기존 서비스 JWT·DB 설정.
+설정: 서버의 GOOGLE_CLIENT_ID, KAKAO_APP_ID, NAVER_CLIENT_ID, NAVER_CLIENT_SECRET, APPLE_CLIENT_IDS 및 기존 서비스 JWT·DB 설정.
 네이버 Callback URL은 모바일과 네이버 콘솔에서 관리한다. 서버의 토큰 교환은 공식 요청 변수 표에 따라 code/state/앱 자격증명을 전송하며 redirect_uri를 입력으로 받지 않는다.
 
 ## 검증 범위와 공식 근거
@@ -115,3 +115,33 @@ SDK·딥링크 선택 및 실제 앱 로그인은 모바일 작업에서 검증�
 - [구글 nonce 계약 참고](https://developers.google.com/identity/gsi/web/reference/js-reference): 웹 API 근거이며 모바일 SDK 계약을 대신하지 않는다.
 - [카카오 로그인 REST API](https://developers.kakao.com/docs/latest/ko/kakaologin/rest-api).
 - [OAuth 보안 RFC 9700](https://www.rfc-editor.org/rfc/rfc9700).
+
+## Apple 모바일 연동
+
+| 단계          | 모바일                                                               | 서버                                                                          |
+| ------------- | -------------------------------------------------------------------- | ----------------------------------------------------------------------------- |
+| 시도 시작     | 본문 없이 POST /auth/social/apple/start                              | UUID loginAttemptId·무작위 nonce·expiresIn=300 반환(201), nonce 해시 저장     |
+| Apple 요청    | 해당 nonce를 Apple 인증 요청의 nonce에 그대로 전달                   | 대기                                                                          |
+| 로그인 결과   | Apple ID 토큰과 원래 loginAttemptId를 POST /auth/social/login에 전달 | 고정 Apple 공개 키로 서명·issuer·audience·만료·sub·nonce 검증                 |
+| 시도 확인     | 응답 대기                                                            | 검증된 nonce 해시와 저장된 시도를 대조, 만료 전 미사용 시도만 원자적으로 소비 |
+| 서비스 로그인 | 서비스 토큰을 보안 저장소에 보관                                     | (apple, sub) 회원 연결과 기존 서비스 토큰 발급                                |
+
+```json
+{
+  "provider": "apple",
+  "credential": "APPLE_ID_TOKEN",
+  "loginAttemptId": "START_RESPONSE_UUID"
+}
+```
+
+Apple 요청에는 서버가 반환한 nonce를 **그대로** 넣는다. SDK가 nonce를 자동으로 SHA-256 처리하는지 공식 SDK 계약으로 확인한다. 최종 Apple 요청의 nonce가 서버 반환값과 같아야 한다. 모바일에서 임의로 다시 해시하면 현재 서버 계약과 불일치한다.
+loginAttemptId는 같은 로그인 화면의 시도와 연결해 보관한다. 취소·앱 재시작·5분 경과·중복 결과·예상하지 못한 콜백은 폐기한다. 웹 리다이렉트 흐름의 state 생성·대조도 클라이언트에서 별도로 구현해야 한다. 서버 nonce 검증이 클라이언트의 잘못된 콜백 처리를 대신하지 않는다.
+서버는 검증 후 회원·서비스 세션 생성 전에 시도를 소비한다. 로그인 요청 재사용·응답 유실·DB 오류 시에는 새 시작 요청과 새 Apple 인증으로 재개한다. JWKS 장애는 503이며 시도를 소비하지 않지만 만료되면 새로 시작한다.
+
+서버 APPLE_CLIENT_IDS는 쉼표 구분 목록이며 공백을 넣지 않는다. iOS는 실제 Bundle ID, 웹/Android는 해당 Services ID를 등록한다. Apple 콘솔의 Sign in with Apple capability, 앱·Services ID·도메인·return URL을 플랫폼에 맞게 설정한다. SDK에서 ID 토큰을 얻는 흐름을 사용해야 한다. ID 토큰 검증에는 Apple private key·Team ID·Key ID·client secret이 필요하지 않다. code 교환·refresh/revoke를 구현할 때 별도 설정이 필요하다.
+
+Apple JWKS는 캐시하며 5초 조회 제한과 redirect 거부를 적용한다. 키 교체 시 라이브러리가 cooldown 이후 다시 조회한다. 새 키 직후 캐시로 거부되면 잠시 후 새 로그인으로 재시도한다. DB 만료·사용 완료 시도 행의 자동 삭제는 아직 없으므로 운영 정리 정책이 필요하다.
+Apple 이메일 숨기기·첫 로그인 이름 제공에 의존하지 않고 검증된 sub로 회원을 식별한다. 제공자 refresh token·연결 해제·Apple 계정 상태 변경과 서비스 세션 동기화는 구현하지 않았다. 현재 서비스 세션은 기존 30일 정책이다.
+
+자동 테스트는 실제 RSA 서명·JWT 검증, HTTP, later_test 시도 소비와 실제 DI·회원·세션 저장을 검증한다. 실제 Apple 콘솔·모바일 SDK·사용자 로그인은 아직 검증하지 않았다.
+[Apple 인증](https://developer.apple.com/documentation/signinwithapple/authenticating-users-with-sign-in-with-apple), [Apple 사용자 검증](https://developer.apple.com/documentation/signinwithapple/verifying-a-user), [Apple ID 토큰](https://developer.apple.com/documentation/signinwithapple/receiving-a-users-identity-token).

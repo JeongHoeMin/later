@@ -6,6 +6,15 @@ import { SocialLoginUseCase } from '@auth/application/social-login.use-case.js';
 import { GoogleAuthProvider } from '@auth/infrastructure/google/google-auth-provider.js';
 import { KakaoAuthProvider } from '@auth/infrastructure/kakao/kakao-auth-provider.js';
 import { NaverAuthProvider } from '@auth/infrastructure/naver/naver-auth-provider.js';
+import { AppleAuthProvider } from '@auth/infrastructure/apple/apple-auth-provider.js';
+import { SecureAppleLoginAttemptGenerator } from '@auth/infrastructure/apple/secure-apple-login-attempt-generator.js';
+import { PrismaAppleLoginAttemptRepository } from '@auth/infrastructure/persistence/prisma-apple-login-attempt.repository.js';
+import {
+  APPLE_LOGIN_ATTEMPT_REPOSITORY,
+  type AppleLoginAttemptRepository,
+} from '@auth/application/ports/apple-login-attempt.repository.js';
+import { StartAppleLoginUseCase } from '@auth/application/start-apple-login.use-case.js';
+import { AppleLoginController } from '@auth/presentation/http/apple-login.controller.js';
 import { SocialLoginController } from '@auth/presentation/http/social-login.controller.js';
 import { AccessTokenModule } from './access-token.module.js';
 import { PrismaModule } from '../database/prisma.module.js';
@@ -38,8 +47,29 @@ const GOOGLE_CLIENT_ID = Symbol('GoogleClientId');
 
 @Module({
   imports: [UsersModule, PrismaModule, AccessTokenModule],
-  controllers: [SocialLoginController, SessionController],
+  controllers: [SocialLoginController, SessionController, AppleLoginController],
   providers: [
+    {
+      provide: APPLE_LOGIN_ATTEMPT_REPOSITORY,
+      inject: [PrismaClient],
+      useFactory: (client: PrismaClient) =>
+        new PrismaAppleLoginAttemptRepository(client),
+    },
+    {
+      provide: StartAppleLoginUseCase,
+      inject: [APPLE_LOGIN_ATTEMPT_REPOSITORY],
+      useFactory: (attempts: AppleLoginAttemptRepository) =>
+        new StartAppleLoginUseCase(
+          attempts,
+          new SecureAppleLoginAttemptGenerator(),
+        ),
+    },
+    {
+      provide: AppleAuthProvider,
+      inject: [APPLE_LOGIN_ATTEMPT_REPOSITORY],
+      useFactory: (attempts: AppleLoginAttemptRepository) =>
+        new AppleAuthProvider(process.env.APPLE_CLIENT_IDS ?? '', attempts),
+    },
     {
       provide: REFRESH_SESSION_REPOSITORY,
       useExisting: AUTH_SESSION_REPOSITORY,
@@ -119,14 +149,16 @@ const GOOGLE_CLIENT_ID = Symbol('GoogleClientId');
         GoogleAuthProvider,
         KakaoAuthProvider,
         NaverAuthProvider,
+        AppleAuthProvider,
         FindOrCreateSocialUserUseCase,
       ],
       useFactory: (
         google: GoogleAuthProvider,
         kakao: KakaoAuthProvider,
         naver: NaverAuthProvider,
+        apple: AppleAuthProvider,
         users: FindOrCreateSocialUserUseCase,
-      ) => new SocialLoginUseCase([google, kakao, naver], users),
+      ) => new SocialLoginUseCase([google, kakao, naver, apple], users),
     },
     {
       provide: NaverAuthProvider,

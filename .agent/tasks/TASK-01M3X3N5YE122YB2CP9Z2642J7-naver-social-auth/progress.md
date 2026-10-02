@@ -59,3 +59,7 @@ push·PR·병합은 승인 범위에 없다. 이번 코드·문서의 로컬 커
 
 Observed: main의 로그인 화면은 카카오·애플·구글을 표시하고 App.tsx는 실제 인증 없이 임시 로그인 상태를 바꾼다. 서버는 구글·카카오·네이버를 지원한다.
 DISC-MOBILE-PROVIDERS / NEEDS_CONFIRMATION: 모바일 제공자 목록을 서버와 맞출지, 애플 서버 인증을 추가할지는 후속 승인 대상이다. 이번 지침·Task 이관에서 제품 동작은 수정하지 않는다. 모바일 로그인 문서에 현재 상태를 명시했다.
+
+## Apple 후속 요구사항 승인
+
+2026-10-02 사용자 Apple 로그인 요청과 설계 “진행해” 승인으로 DISC-MOBILE-PROVIDERS의 Apple 서버 지원은 [Apple Task](../TASK-01M3X599CCKHC50NX77KD3AGJX-apple-social-auth/requirement.md)의 정식 요구사항으로 승격했다. 모바일 SDK 연동과 네이버 버튼 여부는 해당 승인에 포함하지 않는다.
