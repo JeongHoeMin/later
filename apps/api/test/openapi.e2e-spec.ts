@@ -62,6 +62,9 @@ describe('OpenAPI 조회 (e2e)', () => {
       '/',
       '/auth/social/login',
       '/auth/social/apple/start',
+      '/auth/social/naver/start',
+      '/auth/social/naver/callback',
+      '/auth/social/naver/complete',
       '/auth/token/refresh',
       '/auth/logout',
       '/documentation-test',
@@ -83,6 +86,47 @@ describe('OpenAPI 조회 (e2e)', () => {
       .expect('Content-Type', /html/);
     expect(response.text).toContain('swagger-ui');
   });
+  it('네이버 전용 API의 입력·리다이렉트·응답 계약을 제공한다', async () => {
+    const { body: document } = await request(app.getHttpServer())
+      .get('/docs-json')
+      .set('Connection', 'keep-alive')
+      .expect(200);
+    const start = document.paths['/auth/social/naver/start'].post;
+    expect(start.requestBody.required).toBe(false);
+    expect(start.responses['201']).toBeDefined();
+    expect(
+      document.components.schemas.NaverLoginStartResponseDto.required,
+    ).toEqual([
+      'loginAttemptId',
+      'attemptSecret',
+      'authorizationUrl',
+      'expiresIn',
+    ]);
+    const callback = document.paths['/auth/social/naver/callback'].get;
+    expect(
+      callback.parameters.find(
+        (value: { name: string }) => value.name === 'state',
+      ).required,
+    ).toBe(true);
+    expect(callback.responses['303'].headers.Location.schema.type).toBe(
+      'string',
+    );
+    const complete = document.paths['/auth/social/naver/complete'].post;
+    const schema = complete.requestBody.content['application/json'].schema;
+    expect(schema.required).toEqual(['loginAttemptId', 'attemptSecret']);
+    expect(schema.additionalProperties).toBe(false);
+    expect(
+      complete.responses['200'].content['application/json'].schema.$ref,
+    ).toContain('SocialLoginResponseDto');
+    for (const operation of [start, callback, complete]) {
+      expect(operation.responses['400']).toBeDefined();
+      expect(operation.responses['503']).toBeDefined();
+      expect(operation.responses['500']).toBeDefined();
+      expect(operation.security ?? []).toEqual([]);
+    }
+    for (const operation of [callback, complete])
+      expect(operation.responses['401']).toBeDefined();
+  });
   it('제공자별 로그인 필수 필드와 추가 필드 금지 계약을 제공한다', async () => {
     const { body: document } = await request(app.getHttpServer())
       .get('/docs-json')
@@ -91,12 +135,11 @@ describe('OpenAPI 조회 (e2e)', () => {
     const operation = document.paths['/auth/social/login'].post;
     expect(operation.requestBody).toBeDefined();
     const schema = operation.requestBody.content['application/json'].schema;
-    expect(schema.oneOf).toHaveLength(4);
+    expect(schema.oneOf).toHaveLength(3);
     const models = schema.oneOf;
     for (const [provider, extra] of [
       ['google', undefined],
       ['kakao', undefined],
-      ['naver', 'state'],
       ['apple', 'loginAttemptId'],
     ]) {
       const model = models.find(

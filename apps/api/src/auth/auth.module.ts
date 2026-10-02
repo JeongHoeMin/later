@@ -1,3 +1,12 @@
+import { NaverLoginFlow } from './application/naver-login-flow.js';
+import {
+  NAVER_LOGIN_ATTEMPTS,
+  type NaverLoginAttemptRepository,
+} from './application/ports/naver-login-attempt.repository.js';
+import { PrismaNaverLoginAttemptRepository } from './infrastructure/persistence/prisma-naver-login-attempt.repository.js';
+import { SecureNaverLogin } from './infrastructure/naver/naver-login-security.js';
+import { readNaverLoginSettings } from './infrastructure/naver/naver-login-settings.js';
+import { NaverLoginController } from './presentation/http/naver-login.controller.js';
 import { Module } from '@nestjs/common';
 import { OAuth2Client } from 'google-auth-library';
 import { UsersModule } from '@users/users.module.js';
@@ -49,12 +58,33 @@ const GOOGLE_CLIENT_ID = Symbol('GoogleClientId');
 @Module({
   imports: [UsersModule, PrismaModule, AccessTokenModule],
   controllers: [
+    NaverLoginController,
     SocialLoginController,
     SessionController,
     AppleLoginController,
     AuthenticatedUserController,
   ],
   providers: [
+    {
+      provide: NAVER_LOGIN_ATTEMPTS,
+      inject: [PrismaClient],
+      useFactory: (client: PrismaClient) =>
+        new PrismaNaverLoginAttemptRepository(client),
+    },
+    {
+      provide: NaverLoginFlow,
+      inject: [NAVER_LOGIN_ATTEMPTS, SocialSignInUseCase],
+      useFactory: (
+        attempts: NaverLoginAttemptRepository,
+        signIn: SocialSignInUseCase,
+      ) =>
+        new NaverLoginFlow(
+          attempts,
+          new SecureNaverLogin(() => process.env.NAVER_LOGIN_BRIDGE_KEY ?? ''),
+          signIn,
+          readNaverLoginSettings,
+        ),
+    },
     {
       provide: APPLE_LOGIN_ATTEMPT_REPOSITORY,
       inject: [PrismaClient],

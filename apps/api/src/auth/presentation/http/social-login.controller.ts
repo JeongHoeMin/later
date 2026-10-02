@@ -40,7 +40,7 @@ export class SocialLoginController {
   @ApiOperation({
     summary: '소셜 인증 후 회원 연결과 서비스 로그인',
     description:
-      'Google ID token, Kakao access token, Naver code/state 또는 Apple ID token/loginAttemptId를 검증한다. Apple 시도는 회원·세션 저장 전에 소비되므로 이후 오류·응답 유실 시 새 시도로 시작한다.',
+      'Google ID token, Kakao access token 또는 Apple ID token/loginAttemptId를 검증한다. 네이버는 전용 start/callback/complete API를 사용한다. Apple 시도는 회원·세션 저장 전에 소비되므로 이후 오류·응답 유실 시 새 시도로 시작한다.',
     security: [],
   })
   @ApiBody({
@@ -49,13 +49,6 @@ export class SocialLoginController {
     examples: {
       google: { value: { provider: 'google', credential: 'GOOGLE_ID_TOKEN' } },
       kakao: { value: { provider: 'kakao', credential: 'KAKAO_ACCESS_TOKEN' } },
-      naver: {
-        value: {
-          provider: 'naver',
-          credential: 'NAVER_AUTHORIZATION_CODE',
-          state: 'CLIENT_VALIDATED_STATE',
-        },
-      },
       apple: {
         value: {
           provider: 'apple',

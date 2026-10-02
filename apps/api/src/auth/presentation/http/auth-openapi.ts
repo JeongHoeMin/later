@@ -22,7 +22,6 @@ const credentialSchema: SchemaObject = {
 export const socialLoginRequestSchemas: SchemaObject[] = [
   'google',
   'kakao',
-  'naver',
   'apple',
 ].map((provider) => {
   const properties: Record<string, SchemaObject> = {
@@ -30,15 +29,6 @@ export const socialLoginRequestSchemas: SchemaObject[] = [
     credential: credentialSchema,
   };
   const required = ['provider', 'credential'];
-  if (provider === 'naver') {
-    properties.state = {
-      type: 'string',
-      minLength: 1,
-      pattern: '^\\S+$',
-      description: '클라이언트가 원래 인가 요청과 대조한 state',
-    };
-    required.push('state');
-  }
   if (provider === 'apple') {
     properties.loginAttemptId = {
       type: 'string',

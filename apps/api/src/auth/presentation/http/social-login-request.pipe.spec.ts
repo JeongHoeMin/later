@@ -30,16 +30,15 @@ describe('SocialLoginRequestPipe', () => {
     expect(() => pipe.transform(body)).toThrow(BadRequestException);
   });
 
-  it('네이버 인가 코드와 state를 보존한다', () => {
-    expect(
+  it('네이버 직접 code/state 제출을 거부한다', () => {
+    expect(() =>
       pipe.transform({
         provider: 'naver',
         credential: 'code',
         state: 'random-state',
       }),
-    ).toEqual({ provider: 'naver', credential: 'code', state: 'random-state' });
+    ).toThrow(BadRequestException);
   });
-
   it.each([
     { provider: 'naver', credential: 'code', state: '' },
     { provider: 'naver', credential: 'code', state: 123 },
