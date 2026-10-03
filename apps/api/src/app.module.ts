@@ -1,5 +1,6 @@
 import { Module } from '@nestjs/common';
-import { APP_FILTER, HttpAdapterHost } from '@nestjs/core';
+import { APP_FILTER, APP_INTERCEPTOR, HttpAdapterHost } from '@nestjs/core';
+import { RequestLoggingInterceptor } from './common/http/request-logging.interceptor.js';
 import { ApiExceptionFilter } from './common/http/api-exception.filter.js';
 import { createObserveModule } from '@nestjs/observe';
 import { AppController } from './app.controller.js';
@@ -23,6 +24,7 @@ export const { ObserveModule, ObserveInstrument } = createObserveModule();
   ],
   controllers: [AppController],
   providers: [
+    { provide: APP_INTERCEPTOR, useClass: RequestLoggingInterceptor },
     AppService,
     {
       provide: APP_FILTER,

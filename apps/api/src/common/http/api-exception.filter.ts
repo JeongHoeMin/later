@@ -27,11 +27,7 @@ export class ApiExceptionFilter implements ExceptionFilter {
 
   private toResponse(exception: unknown, status: number): ApiErrorResponse {
     if (status >= HttpStatus.INTERNAL_SERVER_ERROR) {
-      this.logger.error(
-        exception instanceof Error
-          ? (exception.stack ?? exception.message)
-          : exception,
-      );
+      this.logger.error({ event: 'http.exception', statusCode: status });
       return {
         error: {
           code: 'INTERNAL_SERVER_ERROR',

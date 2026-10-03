@@ -1,0 +1,10 @@
+id: TASK-01M3XH9QGTQAJSFEPG7GXJYCTS
+title: 전역 컨트롤러 요청 진입 성공 실패 로깅
+status: completed
+phase: completed
+priority: normal
+created_at: 2026-10-02T14:27:23.930+09:00
+updated_at: 2026-10-02T14:34:38.966+09:00
+current_summary: 전역 컨트롤러 진입 성공 실패 로그 구현 및 검증 완료.
+next_action: null
+blocked_by: null
