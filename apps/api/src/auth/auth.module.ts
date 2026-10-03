@@ -1,3 +1,10 @@
+import {
+  AUTH_CLEANUP_REPOSITORY,
+  type AuthCleanupRepository,
+} from './application/ports/auth-cleanup.repository.js';
+import { CleanupExpiredAuthUseCase } from './application/cleanup-expired-auth.use-case.js';
+import { AuthCleanupScheduler } from './infrastructure/cleanup/auth-cleanup.scheduler.js';
+import { PrismaAuthCleanupRepository } from './infrastructure/persistence/prisma-auth-cleanup.repository.js';
 import { SocialAccountLinkController } from './presentation/http/social-account-link.controller.js';
 import { LinkSocialAccountUseCase } from './application/link-social-account.use-case.js';
 import {
@@ -75,6 +82,24 @@ const GOOGLE_CLIENT_ID = Symbol('GoogleClientId');
     AuthenticatedUserController,
   ],
   providers: [
+    {
+      provide: AUTH_CLEANUP_REPOSITORY,
+      inject: [PrismaClient],
+      useFactory: (client: PrismaClient) =>
+        new PrismaAuthCleanupRepository(client),
+    },
+    {
+      provide: CleanupExpiredAuthUseCase,
+      inject: [AUTH_CLEANUP_REPOSITORY],
+      useFactory: (repository: AuthCleanupRepository) =>
+        new CleanupExpiredAuthUseCase(repository),
+    },
+    {
+      provide: AuthCleanupScheduler,
+      inject: [CleanupExpiredAuthUseCase],
+      useFactory: (cleanup: CleanupExpiredAuthUseCase) =>
+        new AuthCleanupScheduler(cleanup),
+    },
     {
       provide: LinkSocialAccountUseCase,
       inject: [
