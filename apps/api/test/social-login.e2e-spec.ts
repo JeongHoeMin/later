@@ -1,3 +1,4 @@
+import { USER_ACCOUNT_REPOSITORY } from '@users/application/ports/user-account.repository.js';
 import { Logger, type INestApplication } from '@nestjs/common';
 import { Test } from '@nestjs/testing';
 import request from 'supertest';
@@ -41,6 +42,8 @@ describe('POST /auth/social/login (e2e)', () => {
     vi.stubEnv('NAVER_CLIENT_SECRET', 'test-naver-secret');
     vi.stubEnv('ACCESS_TOKEN_SECRET', secret);
     const module = await Test.createTestingModule({ imports: [AppModule] })
+      .overrideProvider(USER_ACCOUNT_REPOSITORY)
+      .useValue({ exists: async () => true })
       .overrideProvider(PrismaClient)
       .useValue({ $connect: async () => {}, $disconnect: async () => {} })
       .overrideProvider(GoogleAuthProvider)

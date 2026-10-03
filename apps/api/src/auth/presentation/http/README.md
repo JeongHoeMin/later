@@ -129,4 +129,31 @@ Access Token은 15분, 로그인 세션은 30일간 유효하다. Refresh Token�
 
 헤더 누락·형식 오류는401 `AUTHENTICATION_REQUIRED`, 잘못된·만료된 서비스 JWT는401 `INVALID_ACCESS_TOKEN`이며 `WWW-Authenticate: Bearer`를 제공한다. 검증 시스템 오류는 원문을 숨긴500 `INTERNAL_SERVER_ERROR`다.
 
-현재 API는 JWT 인증 결과만 확인한다. DB의 회원 존재·탈퇴 상태·권한이나 세션 폐기를 조회하지 않는다. 로그아웃 직후에도 이미 발급된 Access Token은 만료까지 유효하다. 갱신 후 회원ID를 확인할 때 새 Access Token으로 이 API를 호출한다.
+현재 API는 JWT 검증과 DB 회원 존재를 확인한다. 탈퇴한 회원의 기존 JWT는 401 INVALID_ACCESS_TOKEN이다. 권한이나 세션 폐기는 조회하지 않으므로 일반 로그아웃 직후 이미 발급된 Access Token은 만료까지 유효하다. 갱신 후 회원ID를 확인할 때 새 Access Token으로 이 API를 호출한다.
+
+## 회원 탈퇴
+
+`DELETE /users/me`, 서비스 Bearer 필수. JWT의 회원만 즉시 삭제하고 빈204를 반환한다. 요청 body/query의 회원 ID를 사용하지 않는다. 회원·소셜 연결·모든 기기 세션/Refresh Token·회원에 묶인 Apple/Naver 연동 시도를 DB 트랜잭션과 FK cascade로 삭제한다. 이후 모든 기존 Access Token과 Refresh Token을 사용할 수 없다. 탈퇴 전에 이미 인증을 통과한 요청을 취소하는 기능은 없다.
+
+탈퇴 유예/복구는 없으며 같은 소셜 계정으로 다시 로그인하면 새 회원 ID로 가입한다. 현재 DB에는 SavedItem/Asset/Subscription 모델이 없으므로 이 API가 저장 콘텐츠·결제 구독을 정리한다고 해석하지 않는다. 해당 도메인 도입 시 탈퇴 정책과 정리 구현을 반드시 확장한다. 제공자 계정 삭제나 외부 revoke는 수행하지 않는다.
+
+## 연결된 소셜 계정 조회
+
+`GET /users/me/social-accounts`, 서비스 Bearer 필수.200 `{ "socialAccounts": [{ "id": "소셜 연결 UUID", "provider": "naver", "linkedAt": "ISO8601 시각" }] }`. 본인 계정만 연결 시각/ID 순으로 반환하고 `Cache-Control: no-store`를 적용한다. subject·제공자 토큰·이메일은 반환하지 않는다.
+
+## 로그인 회원에게 소셜 계정 연동
+
+`POST /users/me/social-accounts`, 서비스 Bearer 필수. 입력 구조는 공통 로그인과 동일하며 네 제공자를 지원한다.200은 연결된 계정의 `{id, provider, linkedAt}`이다. 현재 회원에게 검증된 소셜 계정을 추가하고 새 회원이나 서비스 세션을 만들지 않는다. 연동된 제공자로 이후 로그인하면 동일 회원 ID를 사용한다.
+
+- Google/Kakao: provider와 credential을 제출한다. 제공자 토큰을 서버가 검증한다.
+- Apple: 먼저 `POST /users/me/social-accounts/apple/start`로 본인에 묶인 시도 ID/nonce를 생성한다. nonce로 Apple 인증을 진행하고 provider/credential/loginAttemptId를 연동 API에 제출한다.
+- Naver: 먼저 `POST /users/me/social-accounts/naver/start`로 본인에 묶인 ID/attemptSecret/authorizationUrl을 받는다. 브라우저 로그인과 기존 `/auth/social/naver/callback`을 거친 뒤 provider/loginAttemptId/attemptSecret을 연동 API에 제출한다.
+- 두 연동 시작 API는 body 없음 또는{}만 허용하고201을 반환한다.5분 만료·일회 소비·no-store 정책을 적용한다.
+- Apple/Naver 시도는 시작한 회원과 연동 목적에 묶인다. 일반 로그인 시도를 연동에 쓰거나 연동 시도를 일반 로그인에 쓸 수 없다. 타 회원 시도를 소비하지 못하며 실패한 소유자/목적 확인은 시도를 소비하지 않는다.
+- 회원당 제공자별1개. 동일 본인 계정은 새 유효 인증 증거로 재요청하면 기존 연결200. 같은 일회용 시도 재전송은401이며 새 시작이 필요하다.
+- 이미 타 회원에게 연결된 계정 또는 본인의 동일 제공자 다른 계정은409 `SOCIAL_ACCOUNT_CONFLICT`. 기존 연결·회원·데이터를 변경하지 않는다. 자동 병합/교체/연동 해제 없음.
+- 인증 누락·탈퇴 JWT는401, 잘못된 입력400, 제공자 인증 실패401 `SOCIAL_AUTHENTICATION_FAILED`, 외부 장애503, 내부 오류500. 다른 회원의 존재나 subject는 오류 응답에 포함하지 않는다.
+
+### 마이그레이션 적용
+
+연동 기능 사용 전에 `20261003073000_user_social_account_link`를 배포한다. 회원/제공자 유일 제약과 시도 ownerUserId FK를 추가하며 기존 행 삭제·계정 통합은 하지 않는다. 기존 `(userId, provider)` 중복이 있으면 migration은 실패하므로 사전에 중복을 점검하고 별도 정책을 정한다. 기존 로그인 시도의 ownerUserId는NULL이고 연동 시도는 회원 ID다. 이 nullable owner가 시도의 로그인/연동 목적을 구분한다.

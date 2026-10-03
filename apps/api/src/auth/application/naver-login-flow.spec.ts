@@ -127,4 +127,31 @@ describe('NaverLoginFlow', () => {
     ).rejects.toBeInstanceOf(SocialAuthenticationFailedError);
     expect(signIn.execute).not.toHaveBeenCalled();
   });
+  it('연동 시작은 현재 회원에 시도를 묶고 일반 로그인과 구분한다', async () => {
+    const { flow, attempts } = setup();
+    await flow.start('member');
+    expect(attempts.create.mock.calls[0][0]).toMatchObject({
+      ownerUserId: 'member',
+    });
+  });
+  it('연동 grant 소비는 회원을 전달하며 로그인 세션을 발급하지 않는다', async () => {
+    const { flow, attempts, signIn, now } = setup();
+    const grant = await flow.consumeGrant(
+      'attempt-id',
+      'private-proof',
+      'member',
+    );
+    expect(grant).toEqual({
+      provider: 'naver',
+      credential: 'naver-code',
+      state: 'state-value',
+    });
+    expect(attempts.consume).toHaveBeenCalledWith(
+      'attempt-id',
+      'hash:private-proof',
+      now,
+      'member',
+    );
+    expect(signIn.execute).not.toHaveBeenCalled();
+  });
 });

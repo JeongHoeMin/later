@@ -37,7 +37,7 @@ export class AuthenticatedUserController {
   @ApiOperation({
     summary: '인증된 회원 ID 확인',
     description:
-      '서비스 Access Token의 검증된 회원 ID를 반환한다. DB 회원 상태·권한·로그아웃된 세션 여부는 조회하지 않으며 기존 Access Token은 만료까지 유효하다.',
+      '서비스 Access Token의 검증된 회원 ID를 반환한다. DB 회원 존재를 확인하며 탈퇴한 회원의 JWT는 거부한다. 권한·로그아웃된 세션 여부는 조회하지 않으며 일반 로그아웃의 Access Token은 만료까지 유효하다.',
   })
   @ApiOkResponse({
     type: AuthenticatedUserResponseDto,

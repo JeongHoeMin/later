@@ -4,6 +4,7 @@ export interface NaverLoginAttempt {
   stateHash: string;
   secretHash: string;
   expiresAt: Date;
+  ownerUserId?: string;
 }
 export interface NaverLoginAttemptRepository {
   create(attempt: NaverLoginAttempt): Promise<void>;
@@ -12,7 +13,12 @@ export interface NaverLoginAttemptRepository {
     sealedGrant: string,
     now: Date,
   ): Promise<string | null>;
-  consume(id: string, secretHash: string, now: Date): Promise<string | null>;
+  consume(
+    id: string,
+    secretHash: string,
+    now: Date,
+    ownerUserId?: string,
+  ): Promise<string | null>;
 }
 export interface NaverLoginSecurity {
   generate(): { id: string; state: string; attemptSecret: string };

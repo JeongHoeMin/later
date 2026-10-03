@@ -9,5 +9,6 @@ export interface SocialAuthProvider {
   authenticate(
     credential: string,
     requestContext?: string,
+    ownerUserId?: string,
   ): Promise<SocialIdentity>;
 }

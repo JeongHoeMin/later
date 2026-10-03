@@ -1,3 +1,11 @@
+import { SocialAccountLinkController } from './presentation/http/social-account-link.controller.js';
+import { LinkSocialAccountUseCase } from './application/link-social-account.use-case.js';
+import {
+  USER_ACCOUNT_REPOSITORY,
+  type UserAccountRepository,
+} from '@users/application/ports/user-account.repository.js';
+import { UserAccountModule } from '@users/user-account.module.js';
+import { UserAccountController } from '@users/presentation/http/user-account.controller.js';
 import { NaverLoginFlow } from './application/naver-login-flow.js';
 import {
   NAVER_LOGIN_ATTEMPTS,
@@ -56,8 +64,10 @@ import { AuthenticatedUserController } from './presentation/http/authenticated-u
 const GOOGLE_CLIENT_ID = Symbol('GoogleClientId');
 
 @Module({
-  imports: [UsersModule, PrismaModule, AccessTokenModule],
+  imports: [UsersModule, PrismaModule, AccessTokenModule, UserAccountModule],
   controllers: [
+    SocialAccountLinkController,
+    UserAccountController,
     NaverLoginController,
     SocialLoginController,
     SessionController,
@@ -65,6 +75,30 @@ const GOOGLE_CLIENT_ID = Symbol('GoogleClientId');
     AuthenticatedUserController,
   ],
   providers: [
+    {
+      provide: LinkSocialAccountUseCase,
+      inject: [
+        GoogleAuthProvider,
+        KakaoAuthProvider,
+        NaverAuthProvider,
+        AppleAuthProvider,
+        USER_ACCOUNT_REPOSITORY,
+        NaverLoginFlow,
+      ],
+      useFactory: (
+        google: GoogleAuthProvider,
+        kakao: KakaoAuthProvider,
+        naver: NaverAuthProvider,
+        apple: AppleAuthProvider,
+        users: UserAccountRepository,
+        flow: NaverLoginFlow,
+      ) =>
+        new LinkSocialAccountUseCase(
+          [google, kakao, naver, apple],
+          users,
+          flow,
+        ),
+    },
     {
       provide: NAVER_LOGIN_ATTEMPTS,
       inject: [PrismaClient],

@@ -34,6 +34,18 @@ POST /auth/social/login의 oneOf는 Google/Kakao/Naver/Apple 4개다. Apple에�
 | POST /auth/logout               | 204 빈 응답                  | refreshToken                                                                                 |
 | GET /auth/me                    | 200 회원 ID                  | Authorization: Bearer 서비스 Access Token                                                    |
 
-/auth/me만 위 표에서 서비스 Bearer가 필요하다. 네이버 Callback은 브라우저가 호출하는 경로이며 앱이 직접 호출하지 않는다. 303 Location에는 시도 ID만 있다. /docs-json에서 네이버 경로가 보이지 않으면 최신 서버 재시작/배포 여부를 확인한다. 문서 조회 기능 자체는 서버 배포를 수행하지 않는다.
+/auth/me는 위 표에서 서비스 Bearer가 필요하다. 아래 회원 계정 API도 모두 서비스 Bearer가 필수다. 네이버 Callback은 브라우저가 호출하는 경로이며 앱이 직접 호출하지 않는다. 303 Location에는 시도 ID만 있다. /docs-json에서 네이버 경로가 보이지 않으면 최신 서버 재시작/배포 여부를 확인한다. 문서 조회 기능 자체는 서버 배포를 수행하지 않는다.
 
 [로그인 프로세스](social-login-process.md), [HTTP 계약](../apps/api/src/auth/presentation/http/README.md)을 참고한다.
+
+## 회원 계정 API 계약
+
+| API                                        | 성공                              | 입력                                      |
+| ------------------------------------------ | --------------------------------- | ----------------------------------------- |
+| DELETE /users/me                           | 204 빈 응답                       | 서비스 Bearer, 본인 즉시 탈퇴             |
+| GET /users/me/social-accounts              | 200 socialAccounts 목록           | 서비스 Bearer                             |
+| POST /users/me/social-accounts             | 200 id/provider/linkedAt          | 서비스 Bearer + 제공자별 인증 입력 oneOf4 |
+| POST /users/me/social-accounts/apple/start | 201 시도 ID·nonce·300초           | 서비스 Bearer, body 없음/{}               |
+| POST /users/me/social-accounts/naver/start | 201 시도 ID·비밀값·인가 URL·300초 | 서비스 Bearer, body 없음/{}               |
+
+연동 충돌은409 SOCIAL_ACCOUNT_CONFLICT이며 계정을 병합하지 않는다. 시작 시도는 현재 회원과 연동 목적에 묶이며 일반 로그인 시도와 혼용되지 않는다. Naver callback은 기존 공개 경로를 재사용한다. JWT Guard는 회원 존재도 확인해 탈퇴한 회원의 토큰을 거부한다. 일반 로그아웃의 Access Token은 만료까지 유효하다.

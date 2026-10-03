@@ -149,3 +149,13 @@ Access Token 15분, 서비스 세션 30일. Refresh Token은 플랫폼 보안 �
 - [OAuth 보안 RFC 9700](https://www.rfc-editor.org/rfc/rfc9700)
 
 최종 서비스 로그인 경로는 네 제공자 모두 POST /auth/social/login으로 통일한다. 이전 /auth/social/naver/complete는 제거되어 404이며 클라이언트는 공통 경로와 provider=naver 본문을 사용해야 한다.
+
+## 회원 탈퇴와 소셜 계정 연동
+
+일반 로그아웃은 해당 기기 Refresh Token 세션만 폐기한다. 회원 탈퇴는 서비스 Bearer로 `DELETE /users/me`를 호출하며 회원·소셜 연결·모든 기기 세션을 즉시 삭제한다. 이후 기존 JWT도 회원 존재 확인에서 거부한다. 재가입은 새 회원 ID다.
+
+로그인한 사용자는 `GET /users/me/social-accounts`로 연결된 제공자를 조회하고 `POST /users/me/social-accounts`로 추가한다. 예: 네이버로 로그인한 상태에서 Google 인증을 완료해 연동하면 이후 Google/Naver 로그인 모두 같은 회원을 반환한다. 연동 응답은 연결 정보만이며 현재 서비스 토큰을 교체하지 않는다.
+
+Apple/Naver 연동은 `/users/me/social-accounts/apple/start`, `/users/me/social-accounts/naver/start`를 Bearer로 먼저 호출한다. 일반 로그인용 시작 시도와 혼용할 수 없고 다른 회원이 완료할 수 없다. Naver callback 주소는 기존 서버 callback을 재사용한다. 앱은 시작 당시의 로그인 회원과 ID/비밀값을 유지하며 회원이 바뀌면 새 연동으로 시작한다.
+
+동일 계정 연결은 새 유효 인증 증거로 재시도하면200, 다른 회원에게 연결됐거나 같은 제공자의 다른 계정이면409 SOCIAL_ACCOUNT_CONFLICT다. 일회용 시도는 성공·소비 후 재전송하지 않는다. 계정 병합/교체/연동 해제는 지원하지 않는다. 자세한 입력·오류·탈퇴 범위는 [HTTP 계약](../apps/api/src/auth/presentation/http/README.md)을 따른다.

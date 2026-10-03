@@ -45,6 +45,7 @@ export class AppleAuthProvider {
   async authenticate(
     token: string,
     attemptId?: string,
+    ownerUserId?: string,
   ): Promise<SocialIdentity> {
     if (!isAppleLoginAttemptId(attemptId))
       throw new SocialAuthenticationFailedError();
@@ -87,6 +88,7 @@ export class AppleAuthProvider {
       attemptId,
       createHash('sha256').update(nonce).digest('hex'),
       this.now(),
+      ...(ownerUserId === undefined ? [] : [ownerUserId]),
     );
     if (!consumed) throw new SocialAuthenticationFailedError();
     return { subject };

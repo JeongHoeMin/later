@@ -7,8 +7,14 @@ export interface AppleLoginAttemptRepository {
     id: string;
     nonceHash: string;
     expiresAt: Date;
+    ownerUserId?: string;
   }): Promise<void>;
-  consume(id: string, nonceHash: string, now: Date): Promise<boolean>;
+  consume(
+    id: string,
+    nonceHash: string,
+    now: Date,
+    ownerUserId?: string,
+  ): Promise<boolean>;
 }
 
 export interface AppleLoginAttemptGenerator {

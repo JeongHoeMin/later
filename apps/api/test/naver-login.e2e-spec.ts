@@ -1,3 +1,4 @@
+import { USER_ACCOUNT_REPOSITORY } from '@users/application/ports/user-account.repository.js';
 import { createHash } from 'node:crypto';
 import { Logger, type INestApplication } from '@nestjs/common';
 import { Test } from '@nestjs/testing';
@@ -92,6 +93,8 @@ describe('네이버 소셜 로그인 (e2e)', () => {
     vi.stubGlobal('fetch', http);
     log = vi.spyOn(Logger.prototype, 'error').mockImplementation(() => {});
     const module = await Test.createTestingModule({ imports: [AppModule] })
+      .overrideProvider(USER_ACCOUNT_REPOSITORY)
+      .useValue({ exists: async () => true })
       .overrideProvider(PrismaClient)
       .useValue({ $connect: async () => {}, $disconnect: async () => {} })
       .overrideProvider(NAVER_LOGIN_ATTEMPTS)

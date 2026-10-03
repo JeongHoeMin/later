@@ -1,4 +1,8 @@
 import {
+  USER_ACCOUNT_REPOSITORY,
+  type UserAccountRepository,
+} from '@users/application/ports/user-account.repository.js';
+import {
   Inject,
   Injectable,
   UnauthorizedException,
@@ -20,6 +24,8 @@ export class AccessTokenGuard implements CanActivate {
   constructor(
     @Inject(ACCESS_TOKEN_VERIFIER)
     private readonly verifier: AccessTokenVerifier,
+    @Inject(USER_ACCOUNT_REPOSITORY)
+    private readonly users: Pick<UserAccountRepository, 'exists'>,
   ) {}
 
   async canActivate(context: ExecutionContext): Promise<boolean> {
@@ -40,7 +46,10 @@ export class AccessTokenGuard implements CanActivate {
     }
 
     try {
-      request.user = await this.verifier.verify(token);
+      const user = await this.verifier.verify(token);
+      if (!(await this.users.exists(user.userId)))
+        throw new InvalidAccessTokenError();
+      request.user = user;
       return true;
     } catch (error: unknown) {
       if (error instanceof InvalidAccessTokenError) {

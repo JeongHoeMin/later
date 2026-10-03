@@ -29,6 +29,7 @@ export class PrismaNaverLoginAttemptRepository implements NaverLoginAttemptRepos
     id: string,
     secretHash: string,
     now: Date,
+    ownerUserId?: string,
   ): Promise<string | null> {
     return this.client.$transaction(async (transaction) => {
       const attempt = await transaction.naverLoginAttempt.findUnique({
@@ -36,6 +37,7 @@ export class PrismaNaverLoginAttemptRepository implements NaverLoginAttemptRepos
       });
       if (
         !attempt?.sealedGrant ||
+        attempt.ownerUserId !== (ownerUserId ?? null) ||
         attempt.secretHash !== secretHash ||
         !attempt.callbackAt ||
         attempt.usedAt ||
@@ -46,6 +48,7 @@ export class PrismaNaverLoginAttemptRepository implements NaverLoginAttemptRepos
         where: {
           id,
           secretHash,
+          ownerUserId: ownerUserId ?? null,
           usedAt: null,
           callbackAt: { not: null },
           expiresAt: { gt: now },

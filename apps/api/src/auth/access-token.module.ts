@@ -1,3 +1,4 @@
+import { UserAccountModule } from '@users/user-account.module.js';
 import { Module } from '@nestjs/common';
 import {
   ACCESS_TOKEN_ISSUER,
@@ -7,6 +8,7 @@ import { JwtAccessToken } from '@auth/infrastructure/tokens/jwt-access-token.js'
 import { AccessTokenGuard } from '@auth/presentation/http/access-token.guard.js';
 
 @Module({
+  imports: [UserAccountModule],
   providers: [
     {
       provide: JwtAccessToken,
@@ -17,6 +19,11 @@ import { AccessTokenGuard } from '@auth/presentation/http/access-token.guard.js'
     { provide: ACCESS_TOKEN_VERIFIER, useExisting: JwtAccessToken },
     AccessTokenGuard,
   ],
-  exports: [ACCESS_TOKEN_ISSUER, ACCESS_TOKEN_VERIFIER, AccessTokenGuard],
+  exports: [
+    ACCESS_TOKEN_ISSUER,
+    ACCESS_TOKEN_VERIFIER,
+    AccessTokenGuard,
+    UserAccountModule,
+  ],
 })
 export class AccessTokenModule {}

@@ -16,7 +16,7 @@ export class NaverLoginFlow {
     private readonly settings: () => NaverLoginSettings,
     private readonly now: () => Date = () => new Date(),
   ) {}
-  async start(): Promise<{
+  async start(ownerUserId?: string): Promise<{
     loginAttemptId: string;
     attemptSecret: string;
     authorizationUrl: string;
@@ -26,6 +26,7 @@ export class NaverLoginFlow {
     const value = this.security.generate();
     await this.attempts.create({
       id: value.id,
+      ...(ownerUserId === undefined ? {} : { ownerUserId }),
       stateHash: this.security.hash(value.state),
       secretHash: this.security.hash(value.attemptSecret),
       expiresAt: new Date(this.now().getTime() + 300000),
@@ -58,19 +59,27 @@ export class NaverLoginFlow {
     return url.toString();
   }
   async complete(id: string, secret: string): Promise<SocialSignInResult> {
+    return this.signIn.execute(await this.consumeGrant(id, secret));
+  }
+  async consumeGrant(
+    id: string,
+    secret: string,
+    ownerUserId?: string,
+  ): Promise<{ provider: 'naver'; credential: string; state: string }> {
     this.settings();
     const sealed = await this.attempts.consume(
       id,
       this.security.hash(secret),
       this.now(),
+      ...(ownerUserId === undefined ? [] : [ownerUserId]),
     );
     if (!sealed) throw new SocialAuthenticationFailedError();
     const grant = this.security.open(sealed);
     if (!grant) throw new SocialAuthenticationFailedError();
-    return this.signIn.execute({
+    return {
       provider: 'naver',
       credential: grant.code,
       state: grant.state,
-    });
+    };
   }
 }
