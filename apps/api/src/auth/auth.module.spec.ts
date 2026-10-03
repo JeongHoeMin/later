@@ -2,6 +2,8 @@ import { Test } from '@nestjs/testing';
 import { LoginTicket, OAuth2Client } from 'google-auth-library';
 import { beforeEach, afterEach, describe, expect, it, vi } from 'vitest';
 import { AuthModule } from './auth.module.js';
+import { AUTH_RATE_LIMIT_REPOSITORY } from './application/ports/auth-rate-limit.repository.js';
+import { TestAuthRateLimitRepository } from '../../test/helpers/test-auth-rate-limit.repository.js';
 import { PrismaClient } from '@db/client.js';
 import { SOCIAL_USER_REPOSITORY } from '@users/application/ports/social-user.repository.js';
 import { SocialLoginUseCase } from '@auth/application/social-login.use-case.js';
@@ -11,6 +13,8 @@ const clientId = 'our-client.apps.googleusercontent.com';
 
 function builder() {
   return Test.createTestingModule({ imports: [AuthModule] })
+    .overrideProvider(AUTH_RATE_LIMIT_REPOSITORY)
+    .useValue(new TestAuthRateLimitRepository())
     .overrideProvider(PrismaClient)
     .useValue({ $connect: async () => {}, $disconnect: async () => {} });
 }
@@ -149,6 +153,8 @@ describe('AuthModule', () => {
         },
       ],
     })
+      .overrideProvider(AUTH_RATE_LIMIT_REPOSITORY)
+      .useValue(new TestAuthRateLimitRepository())
       .overrideProvider(PrismaClient)
       .useValue({ $connect: async () => {}, $disconnect: async () => {} })
       .overrideProvider(SOCIAL_USER_REPOSITORY)

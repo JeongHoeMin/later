@@ -162,4 +162,6 @@ Access Token은 15분, 로그인 세션은 30일간 유효하다. Refresh Token�
 
 ## 인증 요청 제한
 
-로그인·Apple/Naver start·Naver callback은 IP별 공유 60초 20회, refresh와 logout은 각각 IP별 60회, 연동·연동 start는 IP별 및 회원별 각각 공유 10회다. 허용 횟수 초과 시 `429 / RATE_LIMIT_EXCEEDED`와 `Retry-After` 헤더(초)를 반환한다. 첫 요청 기준 60초 창이며 실패도 소비하고 차단 요청은 만료를 연장하지 않는다. IP 검사, 인증, 회원 검사 순으로 실행한다. 공유 PostgreSQL 카운터 장애는 500이며 제한을 우회하지 않는다. 읽기·탈퇴 경로는 이번 제한 대상이 아니다.
+로그인·Apple/Naver start·Naver callback은 IP별 공유 60초 20회, refresh와 logout은 각각 IP별 60회, 연동·연동 start는 IP별 및 회원별 각각 공유 10회다. 허용 횟수 초과 시 `429 / RATE_LIMIT_EXCEEDED`와 `Retry-After` 헤더(초)를 반환한다. 첫 요청 기준 60초 창이며 실패도 소비하고 차단 요청은 만료를 연장하지 않는다. IP 검사, 인증, 회원 검사 순으로 실행한다. 공유 Redis 카운터 장애는 500이며 제한을 우회하지 않는다. 읽기·탈퇴 경로는 이번 제한 대상이 아니다.
+
+Redis 카운터는 첫 요청60초 TTL로 자동 삭제하며 초과 요청은 추가 증가하지 않는다. 실행 및 장애 정책은 [Redis 안내](../../../../../../docs/redis.md)를 따른다.

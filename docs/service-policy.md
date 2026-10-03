@@ -89,15 +89,15 @@ Bearer 보호 API는 JWT 검증에 더해 회원이 DB에 존재하는지 확인
 
 IP 제한은 인증·본문 검증·외부 인증·시도 소비 전에 검사한다. 연동의 회원 제한은 Bearer 인증 후 검사한다. 인증 실패도 IP 횟수는 소비한다. 같은 회원은 IP를 바꿔도 회원 제한을 적용받으며, 같은 IP의 여러 회원은 IP 예산을 공유한다. `/auth/me`, 연결 목록 조회, 회원 탈퇴, 기타 경로에는 이 제한을 적용하지 않는다.
 
-카운터는 PostgreSQL에 저장해 서버 인스턴스 간 공유하고 DB 시각을 UTC로 맞춰 만료를 판단한다. 카운터 정리는 서버 기준 시각과 DB 시각 중 이른 값까지만 삭제해 서버 시계가 앞서도 유효한 창을 보존한다. 저장소 장애 시 제한을 우회하지 않고 내부 오류로 요청을 실패시킨다. 저장하는 키는 그룹·IP 또는 그룹·회원 ID를 SHA-256으로 해시한 값이며 토큰·원본 IP·회원 ID는 카운터에 저장하지 않는다. IP 해시는 익명화 보장을 뜻하지 않는다. 현재 제한값은 초기 기본값이며 실제 트래픽과 공용 네트워크의 영향을 관찰해 조정한다.
+카운터는 Redis에 저장해 서버 인스턴스 간 공유하고 서버 시계 대신 Redis TTL로 창의 종료를 판단한다. Lua로 조회·허용 판정·증가를 원자 처리하며 이미 한도를 채운 키는 추가 증가 없이 거부한다. TTL은 최초60초이며 만료 시 자동 삭제된다. Redis 재시작으로 데이터가 사라지면 진행 중인 제한 창은 초기화된다. 저장소 장애 시 제한을 우회하지 않고 내부 오류로 요청을 실패시킨다. 초기 Redis 연결 실패는 API 시작을 거부하며 런타임 명령은1초 deadline 후 실패한다. DB fallback은 없다. 메모리 부족 시 임의 키 eviction으로 예산을 초기화하지 않고 실패한다. timeout 이전 이미 전송된 명령은 카운터를 소비했을 수 있다. 저장하는 키는 그룹·IP 또는 그룹·회원 ID를 SHA-256으로 해시한 값이며 토큰·원본 IP·회원 ID는 카운터에 저장하지 않는다. IP 해시는 익명화 보장을 뜻하지 않는다. 현재 제한값은 초기 기본값이며 실제 트래픽과 공용 네트워크의 영향을 관찰해 조정한다.
 
 기본적으로 `X-Forwarded-For` 등 전달 IP 헤더를 신뢰하지 않는다. 프록시 배포에서는 서버가 관리하는 실제 프록시 IP/CIDR만 `TRUSTED_PROXY_CIDRS`에 지정하고 프록시가 클라이언트 전달 헤더를 안전하게 처리하도록 구성한다. 빈 값은 신뢰 없음, 임의 헤더를 신뢰하는 `true`·홉 수·전체 대역(`/0`) 설정은 허용하지 않는다. 신뢰 설정이 없으면 프록시 IP로 예산을 공유할 수 있다.
 
-근거: [제한 정책과 OpenAPI](../apps/api/src/auth/presentation/http/auth-rate-limit.ts), [제한 Guard](../apps/api/src/auth/presentation/http/auth-rate-limit.guard.ts), [공유 카운터](../apps/api/src/auth/infrastructure/rate-limit/prisma-auth-rate-limit.repository.ts), [프록시 설정](../apps/api/src/auth/infrastructure/rate-limit/client-ip.ts).
+근거: [제한 정책과 OpenAPI](../apps/api/src/auth/presentation/http/auth-rate-limit.ts), [제한 Guard](../apps/api/src/auth/presentation/http/auth-rate-limit.guard.ts), [공유 카운터](../apps/api/src/auth/infrastructure/rate-limit/redis-auth-rate-limit.repository.ts), [Redis 실행·운영](redis.md), [프록시 설정](../apps/api/src/auth/infrastructure/rate-limit/client-ip.ts).
 
 ## 인증 데이터 정리와 응답 보안
 
-- API 시작 1시간 후부터 매시간 만료된 Apple/Naver 로그인·연동 시도, 서비스 세션, 요청 제한 카운터를 테이블별 최대 500개 삭제한다. 만료 세션에 속한 Refresh Token은 함께 삭제한다.
+- API 시작 1시간 후부터 매시간 만료된 Apple/Naver 로그인·연동 시도, 서비스 세션을 테이블별 최대 500개 삭제한다. 이전 PostgreSQL 요청 제한 카운터가 남아 있으면 같은 배치로 정리한다. 새 Redis 카운터는60초 TTL로 자동 삭제되어 이 배치 대상이 아니다. 만료 세션에 속한 Refresh Token은 함께 삭제한다.
 - 만료 전 세션은 폐기 여부와 관계없이 보존한다. 사용 완료 Refresh Token도 세션 만료까지 유지해 재사용 탐지를 보호한다. 사용자·소셜 연결은 정리 대상이 아니다.
 - 중복 작업을 방지하고 여러 서버의 DB 잠금을 건너뛴다. 정리 오류는 다음 주기에 재시도한다. 정리 로그에는 이벤트와 건수만 기록한다.
 - 만료는 즉시 사용 거부 기준이며 물리 삭제 시각과 다르다. 서버가 중지되었거나 유입량이 테이블별 시간당 500개를 넘으면 삭제가 지연될 수 있다. 확정된 삭제 완료 시간 보장은 없다.
@@ -109,6 +109,6 @@ IP 제한은 인증·본문 검증·외부 인증·시도 소비 전에 검사�
 
 이 문서는 구현 정책이며 법적 이용약관·개인정보 처리방침을 대신하지 않는다. 실제 소셜 계정·앱 딥링크·운영 프록시 흐름을 자동 테스트 결과만으로 검증 완료라 주장하지 않는다.
 
-요청 제한 테이블 migration은 격리 `later_test`에서 검증했다. 운영 적용 전 새 서버 배포와 `prisma migrate deploy`, 실제 프록시 허용 목록 설정이 필요하다. 이번 작업에서 개발·운영 DB, 모바일, 배포는 변경하지 않았다.
+이전 요청 제한 테이블 migration은 격리 `later_test`에서 검증했다. Redis 전환은 새 migration 없이 DI 저장소를 변경하며 기존 테이블과 migration 이력을 보존한다. 운영 적용 전 공유 Redis와 REDIS_URL, 새 서버 배포, 기존 미적용 migration의 `prisma migrate deploy`, 실제 프록시 허용 목록 설정이 필요하다. 이번 작업에서 개발·운영 DB, 모바일, 배포는 변경하지 않았다.
 
 정책을 바꾸는 구현은 이 파일에서 수치·조건·예외·오류·미지원 범위를 수정하고 관련 Task의 progress/verification에 갱신 항목을 기록한다. 구현과 문서를 같은 변경 세트로 검증한다. 상세 입력 계약은 [HTTP 계약](../apps/api/src/auth/presentation/http/README.md)과 실행 서버의 [OpenAPI](openapi.md)를 따른다.

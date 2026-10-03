@@ -13,3 +13,5 @@ AuthModule이 등록하는 AuthCleanupScheduler는 API 시작 1시간 후부터 
 정책 기준: [서비스 정책](../../../../../../docs/service-policy.md#인증-데이터-정리와-응답-보안). 제한 카운터는 IP/회원 ID의 해시와 횟수만 저장하며 만료 후 같은 주기에 정리한다.
 
 요청 제한 카운터는 DB UTC 시각과 실행 기준 시각 중 이른 값까지만 삭제한다. 서버 시계가 앞서도 DB에서 유효한 제한 창을 지우지 않는다.
+
+현재 요청 제한은 Redis로 전환했다. AuthRateLimitBucket은 이전 PostgreSQL 카운터가 남아 있을 때만 정리하는 호환 경로이며 새 Redis 키는60초 TTL로 자동 삭제된다. 기존 migration/테이블을 파괴적으로 제거하지 않는다.

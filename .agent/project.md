@@ -33,6 +33,8 @@ pnpm workspace: `apps/api`는 NestJS/TypeScript API, `apps/mobile`은 Expo/React
 
 ## DB와 환경
 
+Redis는 인증 요청 제한 전용 공유 저장소다. REDIS_URL은 필수이며 로컬 실행/운영/테스트는 [Redis 안내](../docs/redis.md)를 따른다. Redis integration은 localhost 논리 DB15에서 테스트 소유 키만 정리하고 FLUSHDB/FLUSHALL은 금지한다. 회원/세션 데이터는 PostgreSQL에 유지한다.
+
 PostgreSQL/Prisma. API `.env`는 개발 DB `later_dev`, `.env.test`는 테스트 DB `later_test`를 사용한다. 파일과 인증 정보는 커밋하지 않는다.
 실제 URL을 출력하지 않고 URL pathname으로 대상 DB를 확인한다. 테스트 정리·삭제는 `later_test`에서만 실행하고 테스트 소유 데이터만 정리한다.
 아래 Prisma 구조·설정·명령은 feat/auth에서 도입했으며 main에 auth가 병합되기 전에는 없을 수 있다. 현재 브랜치에 존재하는지 먼저 확인한다.

@@ -1,5 +1,5 @@
 import type { AuthRateLimitRepository } from '../../src/auth/application/ports/auth-rate-limit.repository.js';
-// The only substituted boundary is PostgreSQL. Guards, policy selection and HTTP responses remain real.
+// The only substituted boundary is the external rate-limit store. Guards, policy selection and HTTP responses remain real.
 export class TestAuthRateLimitRepository implements AuthRateLimitRepository {
   readonly buckets = new Map<string, { hits: number; expiresAt: number }>();
   constructor(private readonly now: () => number = Date.now) {}
