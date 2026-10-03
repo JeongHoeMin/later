@@ -11,6 +11,28 @@ export function normalizeClientIp(ip: string): string {
   return [24, 16, 8, 0].map((shift) => (value >>> shift) & 255).join('.');
 }
 
+function includesAllMappedIpv4(ip: string, prefix: number): boolean {
+  if (prefix > 96) return false;
+  const canonical = new URL(`http://[${ip}]/`).hostname.slice(1, -1);
+  const [left, right] = canonical.split('::');
+  const head = left ? left.split(':') : [];
+  const tail = right ? right.split(':') : [];
+  const groups =
+    right === undefined
+      ? head
+      : [
+          ...head,
+          ...Array<string>(8 - head.length - tail.length).fill('0'),
+          ...tail,
+        ];
+  const address = BigInt(
+    '0x' + groups.map((group) => group.padStart(4, '0')).join(''),
+  );
+  const mappedNetwork = 0xffffn << 32n;
+  const shift = BigInt(128 - prefix);
+  return address >> shift === mappedNetwork >> shift;
+}
+
 export function readTrustedProxyCidrs(value?: string): string[] | false {
   if (!value?.trim()) return false;
   const cidrs = value.split(',').map((item) => item.trim());
@@ -23,7 +45,8 @@ export function readTrustedProxyCidrs(value?: string): string[] | false {
       (prefix !== undefined &&
         (!/^\d+$/.test(prefix) ||
           Number(prefix) < 1 ||
-          Number(prefix) > (family === 4 ? 32 : 128)))
+          Number(prefix) > (family === 4 ? 32 : 128) ||
+          (family === 6 && includesAllMappedIpv4(ip!, Number(prefix)))))
     ) {
       throw new Error(
         'TRUSTED_PROXY_CIDRS에는 명시적인 IP 또는 CIDR만 허용합니다.',

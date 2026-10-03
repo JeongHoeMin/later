@@ -8,9 +8,10 @@
 - 검증한 제공자와 제공자 회원 식별값의 조합으로 회원을 찾는다. 첫 로그인은 회원과 소셜 연결을 생성하고, 이후 같은 소셜 계정은 같은 회원으로 로그인한다.
 - 이메일이 같아도 회원을 자동 병합하지 않는다. 사용자가 보낸 회원 식별값을 그대로 신뢰하지 않고 서버가 제공자 인증 정보를 검증한다.
 - Google은 허용 Client ID의 ID Token, Kakao는 설정된 앱 ID에 속한 Access Token, Apple은 허용 audience의 ID Token과 서버 시도/nonce를 검증한다. Naver는 서버가 생성한 인가 URL과 callback을 거쳐 서버에서 코드를 교환한다.
+- Google 인증서 HTTP 조회는5초 timeout과 자동 재시도0회를 적용한다. SDK의 인증서 cache는 유지한다. 인증서 통신 실패·HTTP 오류·잘못된 인증서 응답은 로그인/연동에서 `503 / INTERNAL_SERVER_ERROR`, 잘못된 JWT·서명·claims·subject는 `401 / SOCIAL_AUTHENTICATION_FAILED`로 구분한다. 인증서 응답은 검증 후 cache에 반영하며 장애 시 회원·세션·연동을 저장하지 않는다. 외부 오류 원문은 응답하지 않는다. 전역 제공자 동시성 상한/circuit breaker는 아직 없다.
 - 소셜 로그인 성공 응답은 회원 ID와 Later Access/Refresh Token이다. 제공자 토큰은 서비스 로그인 응답으로 반환하지 않으며, 회원·세션 저장소에 제공자 토큰 원문을 보관하지 않는다.
 
-근거: [소셜 로그인 유스케이스](../apps/api/src/auth/application/social-login.use-case.ts), [회원 저장소](../apps/api/src/users/infrastructure/persistence/prisma-social-user.repository.ts), [앱 연동 절차](social-login-process.md).
+근거: [소셜 로그인 유스케이스](../apps/api/src/auth/application/social-login.use-case.ts), [회원 저장소](../apps/api/src/users/infrastructure/persistence/prisma-social-user.repository.ts), [앱 연동 절차](social-login-process.md), [Google 통신 경계](../apps/api/src/auth/infrastructure/google/google-oauth-client.ts).
 
 ## 로그인·연동 시도
 
@@ -91,7 +92,7 @@ IP 제한은 인증·본문 검증·외부 인증·시도 소비 전에 검사�
 
 카운터는 Redis에 저장해 서버 인스턴스 간 공유하고 서버 시계 대신 Redis TTL로 창의 종료를 판단한다. Lua로 조회·허용 판정·증가를 원자 처리하며 이미 한도를 채운 키는 추가 증가 없이 거부한다. TTL은 최초60초이며 만료 시 자동 삭제된다. Redis 재시작으로 데이터가 사라지면 진행 중인 제한 창은 초기화된다. 저장소 장애 시 제한을 우회하지 않고 내부 오류로 요청을 실패시킨다. 초기 Redis 연결 실패는 API 시작을 거부하며 런타임 명령은1초 deadline 후 실패한다. DB fallback은 없다. 메모리 부족 시 임의 키 eviction으로 예산을 초기화하지 않고 실패한다. timeout 이전 이미 전송된 명령은 카운터를 소비했을 수 있다. 저장하는 키는 그룹·IP 또는 그룹·회원 ID를 SHA-256으로 해시한 값이며 토큰·원본 IP·회원 ID는 카운터에 저장하지 않는다. IP 해시는 익명화 보장을 뜻하지 않는다. 현재 제한값은 초기 기본값이며 실제 트래픽과 공용 네트워크의 영향을 관찰해 조정한다.
 
-기본적으로 `X-Forwarded-For` 등 전달 IP 헤더를 신뢰하지 않는다. 프록시 배포에서는 서버가 관리하는 실제 프록시 IP/CIDR만 `TRUSTED_PROXY_CIDRS`에 지정하고 프록시가 클라이언트 전달 헤더를 안전하게 처리하도록 구성한다. 빈 값은 신뢰 없음, 임의 헤더를 신뢰하는 `true`·홉 수·전체 대역(`/0`) 설정은 허용하지 않는다. 신뢰 설정이 없으면 프록시 IP로 예산을 공유할 수 있다.
+기본적으로 `X-Forwarded-For` 등 전달 IP 헤더를 신뢰하지 않는다. 프록시 배포에서는 서버가 관리하는 실제 프록시 IP/CIDR만 `TRUSTED_PROXY_CIDRS`에 지정하고 프록시가 클라이언트 전달 헤더를 안전하게 처리하도록 구성한다. 빈 값은 신뢰 없음, 임의 헤더를 신뢰하는 `true`·홉 수·전체 대역(`/0`) 설정은 허용하지 않는다. IPv6 표기여도 전체 mapped IPv4 `/96`을 포함하는 CIDR(예: `::ffff:0:0/96`, `::/80`)은 거부한다. IPv4가 포함된 IPv6의 host bits·압축·대소문자 표기 차이로 이 검증을 우회할 수 없다. 전체 IPv4를 포함하지 않는 명시 범위는 기존 방식으로 허용한다. 신뢰 설정이 없으면 프록시 IP로 예산을 공유할 수 있다.
 
 근거: [제한 정책과 OpenAPI](../apps/api/src/auth/presentation/http/auth-rate-limit.ts), [제한 Guard](../apps/api/src/auth/presentation/http/auth-rate-limit.guard.ts), [공유 카운터](../apps/api/src/auth/infrastructure/rate-limit/redis-auth-rate-limit.repository.ts), [Redis 실행·운영](redis.md), [프록시 설정](../apps/api/src/auth/infrastructure/rate-limit/client-ip.ts).
 

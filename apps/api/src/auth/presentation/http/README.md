@@ -19,6 +19,8 @@
 - 추가 필드와 잘못된 본문은 400으로 거부한다.
 - 회원 식별에는 검증된 구글 토큰의 sub를 사용한다.
 
+Google 인증서 조회는5초 timeout·자동 retry0으로 처리하고 SDK cache를 유지한다. 통신 실패·HTTP 오류·잘못된 인증서 응답은 회원/세션/연동 저장 전에503 `INTERNAL_SERVER_ERROR`로 변환한다. 토큰 검증 실패는401 `SOCIAL_AUTHENTICATION_FAILED`다. 오류 원문은 반환하지 않는다.
+
 카카오 요청:
 
 ```json

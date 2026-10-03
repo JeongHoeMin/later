@@ -216,7 +216,7 @@ describe('인증 API 요청 제한 HTTP', () => {
   it('동일 회원은 IP를 바꿔도 10회만 연동하며 다른 회원·IP는 독립적이다', async () => {
     (app as NestExpressApplication).set(
       'trust proxy',
-      readTrustedProxyCidrs('127.0.0.1/32,::1/128'),
+      readTrustedProxyCidrs('::ffff:127.0.0.1/128,::1/128'),
     );
     for (let i = 0; i < 10; i++)
       expect(
@@ -257,7 +257,7 @@ describe('인증 API 요청 제한 HTTP', () => {
   it('동일 IP의 IPv4와 mapped IPv6 표기는 같은 로그인 카운터를 사용한다', async () => {
     (app as NestExpressApplication).set(
       'trust proxy',
-      readTrustedProxyCidrs('127.0.0.1/32,::1/128'),
+      readTrustedProxyCidrs('::ffff:127.0.0.1/128,::1/128'),
     );
     for (let i = 0; i < 20; i++)
       expect(

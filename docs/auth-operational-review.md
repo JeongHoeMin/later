@@ -1,6 +1,6 @@
 # Auth 운영 위험 점검
 
-2026-10-03 `feat/auth` 코드와 설치된 라이브러리를 점검했다. 운영 DB/클라우드/프록시에는 접속하지 않았고 실제 트래픽·월 비용을 측정하지 않았다. 아래 수치는 가정을 둔 용량 계산이며 청구액이나 부하 테스트 결과가 아니다. Redis 구성 추가는 사용자 승인을 받아 별도 Task로 구현했다. 후속 승인으로 정리 처리량과 인덱스도 개선했으며 아래에서 초기 발견과 현재 상태를 구분한다. 서비스 정책의 기준은 [service-policy.md](service-policy.md)다.
+2026-10-03 `feat/auth` 코드와 설치된 라이브러리를 점검했다. 운영 DB/클라우드/프록시에는 접속하지 않았고 실제 트래픽·월 비용을 측정하지 않았다. 아래 수치는 가정을 둔 용량 계산이며 청구액이나 부하 테스트 결과가 아니다. Redis 구성 추가는 사용자 승인을 받아 별도 Task로 구현했다. 후속 승인으로 정리 처리량·인덱스·프록시 범위 검증·Google 통신 경계도 개선했으며 아래에서 초기 발견과 현재 상태를 구분한다. 서비스 정책의 기준은 [service-policy.md](service-policy.md)다.
 
 ## 우선순위와 상태
 
@@ -10,8 +10,8 @@
 | 높음 · 처리량 조건부 | 만료 데이터 정리가 유입량을 따라가지 못함           | Redis 키는 TTL로 해결. 로그인 시도/세션도 즉시·5분 주기와 bounded 반복으로 개선. backlog 지표와 cascade 비용은 후속 과제 |
 | 중간                 | 만료 세션과 연동 시도 FK의 인덱스 누락              | 인덱스3개 추가 및 테스트 DB migration/EXPLAIN 검증 완료. 운영 미적용                                                     |
 | 중간                 | 사용 완료 Refresh Token·세션 누적과 큰 cascade 삭제 | 세션 수/갱신 빈도/보존 용량 측정, 갱신 남용 제한 및 삭제 배치 전략 권고                                                  |
-| 중간                 | 전체 IPv4를 신뢰하는 mapped IPv6 설정이 검증 통과   | `::ffff:0:0/96` 재현 확인. 실제 프록시 범위 검증 보강 권고                                                               |
-| 중간                 | Google 인증서 통신 deadline 및 장애 구분 부족       | 명시 timeout·retry 한도·503 분류 권고                                                                                    |
+| 중간                 | 전체 IPv4를 신뢰하는 mapped IPv6 설정이 검증 통과   | 전체 mapped IPv4 포함 IPv6 CIDR 거부 구현 및 단위/HTTP 회귀 완료. 실제 프록시 배포 설정은 미확인                         |
+| 중간                 | Google 인증서 통신 deadline 및 장애 구분 부족       | 5초 timeout·자동 retry0·인증서 장애503 분류와 cache 유지 구현/검증 완료                                                  |
 | 배포 전 확인         | IP 예산 공유, Redis 장애, DB pool/관측/재인증 정책  | 아래 적용 조건을 확인할 필요가 있음                                                                                      |
 
 ## 1. 요청 제한이 DB 부하를 막지 못하던 구조 — 이번 변경으로 해소
@@ -50,17 +50,17 @@ Apple/Naver의 ownerUserId는 회원 탈퇴 cascade FK지만 [연동 migration](
 
 권고: 세션별 갱신 빈도/토큰 수·회원별 활성 세션 수를 측정하고 비정상 갱신 남용 보호 및 삭제 전략을 설계한다. 단순히 사용 완료 토큰을 지우거나 정상 사용자 갱신을 거절하면 현재 보안/앱 복원 정책을 바꾸므로 별도 Task와 정책 갱신이 필요하다.
 
-## 5. 프록시 설정 검증의 우회 사례 — 조건부 보안 결함
+## 5. 프록시 설정 검증 우회 — 수정 완료
 
-[설정 검증](../apps/api/src/auth/infrastructure/rate-limit/client-ip.ts:26)은 IPv6 prefix1~128을 허용하므로 `::ffff:0:0/96`을 통과시킨다. Express의 proxy-addr는 이 범위를 모든 IPv4 peer에 대한 신뢰로 해석한다. 현재 설치 코드로 검증기에 해당 설정을 전달하고 `proxy-addr.compile` 결과가 임의 IPv4 `203.0.113.10`을 신뢰함을 읽기 전용 probe로 재현했다.
+초기 [설정 검증](../apps/api/src/auth/infrastructure/rate-limit/client-ip.ts)은 IPv6 prefix1~128을 허용하여 `::ffff:0:0/96`을 통과시킨다. Express의 proxy-addr는 이 범위를 모든 IPv4 peer에 대한 신뢰로 해석한다. 현재 설치 코드로 검증기에 해당 설정을 전달하고 `proxy-addr.compile` 결과가 임의 IPv4 `203.0.113.10`을 신뢰함을 읽기 전용 probe로 재현했다.
 
-이 설정을 쓰고 외부에서 API에 직접 연결할 수 있으면 X-Forwarded-For를 임의로 바꿔 IP 예산을 우회할 수 있다. 운영이 실제로 이 설정이라는 근거는 없다. mapped 주소의 실효 IPv4 prefix 범위를 확인하는 검증·회귀 테스트를 권고한다. 지금은 실제 프록시의 정확한 IP/CIDR만 등록해야 한다.
+이 설정을 쓰고 외부에서 API에 직접 연결할 수 있으면 X-Forwarded-For를 임의로 바꿔 IP 예산을 우회할 수 있다. 운영이 실제로 이 설정이라는 근거는 없다. 현재 검증은 canonical IPv6를128비트 prefix로 비교하여 mapped IPv4 전체를 포함하는 CIDR을 거부한다. 압축/대소문자/IPv4 표현·host bits·더 넓은 IPv6 범위를 포함한8개 우회 사례를 차단했다. 좁은 mapped CIDR 허용과 실제 HTTP IP 예산 회귀도 검증했다. 운영에는 실제 프록시의 정확한 IP/CIDR만 등록해야 한다.
 
 ## 6. 소셜 제공자 지연과 오류 분류
 
 Kakao는 인증 때 token info와 user profile을 순차 호출하고 각각5초 제한이다. Naver는 code exchange와 profile을 각각5초 제한으로 호출한다. 앱 코드에는 전체 제공자 호출의 전역 동시성 상한/circuit breaker가 없다. 여러 IP에서 허용 예산을 소비하면 제공자 지연 동안 동시 대기 요청과 연결이 늘 수 있다. 실제 앞단의 연결 제한 설정은 확인하지 않았다.
 
-[Google provider](../apps/api/src/auth/infrastructure/google/google-auth-provider.ts:22)는 verifyIdToken을 사용한다. 설치된 google-auth-library11.1.0은 인증서를 Cache-Control max-age 동안 재사용하므로 매 로그인마다 외부 호출하는 구조는 아니다. 다만 캐시가 없거나 만료된 경우 인증서 GET에 RETRY_CONFIG만 주며 프로젝트에서 명시 deadline을 지정하지 않는다. 설치된 Gaxios는 timeout 옵션이 있을 때만 timeout signal을 추가한다. Google 인증서 장애/timeout까지 catch에서401로 바꿔 정상 사용자가 잘못된 인증으로 안내받을 수 있다. 외부 장애를503으로 구분하고 총 대기/재시도 한도를 정하는 것을 권고한다.
+[Google provider](../apps/api/src/auth/infrastructure/google/google-auth-provider.ts:22)는 verifyIdToken을 사용한다. 설치된 google-auth-library11.1.0은 인증서를 Cache-Control max-age 동안 재사용하므로 매 로그인마다 외부 호출하는 구조는 아니다. 초기 구현은 인증서 GET에 명시 timeout이 없고 재시도가 켜져 있었으며 통신 실패까지401로 바꿨다. 현재 [Google client factory](../apps/api/src/auth/infrastructure/google/google-oauth-client.ts)는 HTTP5초 timeout과 retry0을 적용한다. 응답 인증서 형태/공개키를 SDK cache 저장 전에 검증하여 잘못된 응답 뒤 재시도로 복구할 수 있다. 통신/HTTP/응답 장애는503, JWT/서명/claims 실패는401로 구분한다. 실제 SDK와 HTTP 경계 대체 테스트로 native5초 취소·재시도 없음·cache·회복·Nest DI/HTTP/저장 전 실패를 검증했다. 운영 Google 네트워크의 실제 지연은 미측정이며 전역 동시성 상한은 여전히 후속 과제다.
 
 Apple의 JWKS client는 provider instance에 유지되고5초 네트워크 제한을 설정한다. 캐시 때문에 인증마다 JWKS를 다시 받는다고 판단하지 않았다. 실제 제공자 계정/네트워크에 대한 부하 시험은 하지 않았다.
 
@@ -79,8 +79,8 @@ Apple의 JWKS client는 provider instance에 유지되고5초 네트워크 제�
 
 1. 정리 주기/즉시 실행/bounded 반복은 개선 완료. 실제 backlog 지표와 실패/상한 도달 경보를 추가 검토.
 2. 세션 만료·연동 owner FK 인덱스와 테스트 DB EXPLAIN은 완료. 운영 migration 적용 계획 필요.
-3. 프록시 mapped 전체범위 설정 거부 회귀 테스트/수정.
-4. Google 외부 통신 timeout/오류 분류, 전체 제공자 동시 대기 상한.
+3. 프록시 mapped 전체범위 설정 거부는 완료. 실제 운영 프록시 허용 목록/헤더 처리 확인 필요.
+4. Google timeout/오류 분류는 완료. 전체 제공자 동시 대기 상한과 circuit breaker는 후속 검토.
 5. 세션/토큰 누적 지표와 갱신 남용 정책, 실제 공용IP/프록시 테스트.
 
 점검만으로 위 변경의 사용자 정책을 확정하지 않는다. 구현 시 기능별 Task로 분리하고 [서비스 정책](service-policy.md)을 함께 갱신한다.

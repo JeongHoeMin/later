@@ -55,6 +55,8 @@ JWT 검증 후 보호 API는 PostgreSQL에서 회원 존재 여부도 확인한�
 
 수명·제한 횟수·재사용 탐지·삭제 예외는 중복 정의하지 않고 [서비스 정책](service-policy.md)을 따른다.
 
+Google은 같은 API 프로세스의 OAuth2Client factory를 사용한다. 인증서 HTTP에5초 timeout·자동 retry0을 적용하고 응답 검증을 통과해야 SDK cache에 저장한다. JWT 검증은 SDK가 수행한다. 인증서 장애는503으로 분류한다. [통신 경계 코드](../apps/api/src/auth/infrastructure/google/google-oauth-client.ts)를 기준으로 하며 외부 제공자 전역 동시성 제한/회로 차단기는 아직 없다.
+
 ## 로컬 구성과 환경 경계
 
 - 루트 [compose.yaml](../compose.yaml)은 **Redis만** 실행한다. API와 PostgreSQL을 함께 띄우는 전체 Compose 구성은 없다.
@@ -67,7 +69,7 @@ JWT 검증 후 보호 API는 PostgreSQL에서 회원 존재 여부도 확인한�
 
 API 인스턴스를 늘리면 동일 환경의 PostgreSQL과 Redis를 공유해야 요청 제한·세션 상태가 일관된다. 현재 인스턴스 수나 고가용성 구성은 정해진 것으로 기록하지 않는다.
 
-운영 프록시를 둔다면 TLS 종료·전체 트래픽 제한과 정확한 `TRUSTED_PROXY_CIDRS`를 설정한다. 운영 Redis의 private network·ACL·TLS·용량/장애 감시, PostgreSQL 연결 예산·백업, 의존 저장소 readiness와 관측 설정은 별도 확인 대상이다. Redis 장애는 인증 요청을 실패시키며 PostgreSQL fallback을 하지 않는다.
+운영 프록시를 둔다면 TLS 종료·전체 트래픽 제한과 정확한 `TRUSTED_PROXY_CIDRS`를 설정한다. `/0`과 전체 mapped IPv4를 포함하는 IPv6 CIDR은 시작 시 거부한다. 운영 Redis의 private network·ACL·TLS·용량/장애 감시, PostgreSQL 연결 예산·백업, 의존 저장소 readiness와 관측 설정은 별도 확인 대상이다. Redis 장애는 인증 요청을 실패시키며 PostgreSQL fallback을 하지 않는다.
 
 ## 문서 유지 기준
 

@@ -1,0 +1,10 @@
+id: TASK-01M40T2N7SYZKC60EA1J5KP96W
+title: 전체 IPv4를 신뢰하는 IPv6 프록시 설정 차단
+status: completed
+phase: completed
+priority: normal
+created_at: 2026-10-03T20:58:32+09:00
+updated_at: 2026-10-03T21:09:45+09:00
+current_summary: 기능별 개선 및 전체 서버530개 테스트/정책·구성 검증 완료.
+next_action: null
+blocked_by: null

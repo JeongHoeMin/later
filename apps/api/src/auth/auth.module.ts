@@ -28,6 +28,7 @@ import { OAuth2Client } from 'google-auth-library';
 import { UsersModule } from '@users/users.module.js';
 import { FindOrCreateSocialUserUseCase } from '@users/application/find-or-create-social-user.use-case.js';
 import { SocialLoginUseCase } from '@auth/application/social-login.use-case.js';
+import { createGoogleOAuthClient } from './infrastructure/google/google-oauth-client.js';
 import { GoogleAuthProvider } from '@auth/infrastructure/google/google-auth-provider.js';
 import { KakaoAuthProvider } from '@auth/infrastructure/kakao/kakao-auth-provider.js';
 import { NaverAuthProvider } from '@auth/infrastructure/naver/naver-auth-provider.js';
@@ -234,7 +235,7 @@ const GOOGLE_CLIENT_ID = Symbol('GoogleClientId');
         return clientId;
       },
     },
-    { provide: OAuth2Client, useFactory: () => new OAuth2Client() },
+    { provide: OAuth2Client, useFactory: createGoogleOAuthClient },
     {
       provide: GoogleAuthProvider,
       inject: [GOOGLE_CLIENT_ID, OAuth2Client],

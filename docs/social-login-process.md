@@ -114,7 +114,7 @@ Access Token 15분, 서비스 세션 30일. Refresh Token은 플랫폼 보안 �
 | /auth/me 헤더 누락·형식 오류                      | 401 / AUTHENTICATION_REQUIRED      | 서비스 Bearer 제출      |
 | /auth/me 서비스 JWT 실패                          | 401 / INVALID_ACCESS_TOKEN         | 갱신 또는 로그인        |
 
-공통 오류는 {"error":{"code":"...","message":"...","details":["..."]}}이며 details는 선택이다. Google 라이브러리 검증 오류는 401로 통일한다.
+공통 오류는 {"error":{"code":"...","message":"...","details":["..."]}}이며 details는 선택이다. Google의 잘못된 JWT·서명·claims는401이며 인증서 통신/HTTP/응답 장애는503으로 구분한다. 인증서 조회는5초 timeout·자동 retry0이며 SDK cache를 유지한다.
 네이버/Apple 시도는 회원·세션 저장 전에 소비한다. 이후 실패나 응답 유실 시 같은 시도로 재시도하지 말고 새 start로 재개한다. 중복 네이버 콜백도 거부한다. 300초는 우리 시도 정책이며 네이버 코드의 공식 만료시간을 뜻하지 않는다.
 
 ## 서버 설정과 운영 적용
