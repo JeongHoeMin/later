@@ -1,3 +1,4 @@
+import { AuthRateLimitModule } from './auth-rate-limit.module.js';
 import {
   AUTH_CLEANUP_REPOSITORY,
   type AuthCleanupRepository,
@@ -71,7 +72,13 @@ import { AuthenticatedUserController } from './presentation/http/authenticated-u
 const GOOGLE_CLIENT_ID = Symbol('GoogleClientId');
 
 @Module({
-  imports: [UsersModule, PrismaModule, AccessTokenModule, UserAccountModule],
+  imports: [
+    UsersModule,
+    PrismaModule,
+    AccessTokenModule,
+    UserAccountModule,
+    AuthRateLimitModule,
+  ],
   controllers: [
     SocialAccountLinkController,
     UserAccountController,

@@ -1,3 +1,8 @@
+import { AuthRateLimit } from './auth-rate-limit.js';
+import {
+  AuthIpRateLimitGuard,
+  AuthMemberRateLimitGuard,
+} from './auth-rate-limit.guard.js';
 import {
   BadRequestException,
   Body,
@@ -51,7 +56,8 @@ const emptyBodySchema = {
   maxProperties: 0,
 };
 @Controller('users/me/social-accounts')
-@UseGuards(AccessTokenGuard)
+@UseGuards(AuthIpRateLimitGuard, AccessTokenGuard, AuthMemberRateLimitGuard)
+@AuthRateLimit('link')
 @ApiBearerAuth()
 @ApiTags('회원 계정')
 export class SocialAccountLinkController {

@@ -38,6 +38,7 @@ describe('인증 만료 데이터 실제 DB 정리', () => {
       prisma.appleLoginAttempt.aggregate({ _min: { expiresAt: true } }),
       prisma.naverLoginAttempt.aggregate({ _min: { expiresAt: true } }),
       prisma.authSession.aggregate({ _min: { expiresAt: true } }),
+      prisma.authRateLimitBucket.aggregate({ _min: { expiresAt: true } }),
     ]);
     const values = minima
       .map((m) => m._min.expiresAt?.getTime())
@@ -122,6 +123,7 @@ describe('인증 만료 데이터 실제 DB 정리', () => {
       appleAttempts: 2,
       naverAttempts: 2,
       sessions: 2,
+      rateLimitBuckets: 0,
     });
     expect(
       await prisma.appleLoginAttempt.count({
@@ -157,6 +159,7 @@ describe('인증 만료 데이터 실제 DB 정리', () => {
       appleAttempts: 0,
       naverAttempts: 0,
       sessions: 0,
+      rateLimitBuckets: 0,
     });
   });
   it('테이블별 배치 제한으로 가장 오래된 행부터 정리한다', async () => {
@@ -170,6 +173,7 @@ describe('인증 만료 데이터 실제 DB 정리', () => {
       appleAttempts: 2,
       naverAttempts: 2,
       sessions: 2,
+      rateLimitBuckets: 0,
     });
     expect(
       await prisma.appleLoginAttempt.count({ where: { id: { in: oldApple } } }),
@@ -195,6 +199,7 @@ describe('인증 만료 데이터 실제 DB 정리', () => {
       appleAttempts: 1,
       naverAttempts: 1,
       sessions: 1,
+      rateLimitBuckets: 0,
     });
   });
   it('여러 서버의 동시 정리는 중복 집계 없이 만료 데이터만 삭제한다', async () => {
@@ -213,6 +218,7 @@ describe('인증 만료 데이터 실제 DB 정리', () => {
       appleAttempts: 0,
       naverAttempts: 0,
       sessions: 0,
+      rateLimitBuckets: 0,
     });
   });
   it('다른 트랜잭션이 잠근 시도는 기다리지 않고 다음 실행까지 보존한다', async () => {
@@ -237,6 +243,7 @@ describe('인증 만료 데이터 실제 DB 정리', () => {
         appleAttempts: 1,
         naverAttempts: 0,
         sessions: 0,
+        rateLimitBuckets: 0,
       });
       expect(
         await prisma.appleLoginAttempt.findUnique({ where: { id: locked } }),

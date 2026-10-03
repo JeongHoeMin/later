@@ -31,10 +31,19 @@ export class PrismaAuthCleanupRepository implements AuthCleanupRepository {
  )
  DELETE FROM "AuthSession" AS target USING expired
  WHERE target."id" = expired."id" RETURNING target."id"`;
+      const buckets = await tx.$queryRaw<{ key: string }[]>`
+        WITH expired AS (
+          SELECT "key" FROM "AuthRateLimitBucket"
+          WHERE "expiresAt" <= LEAST(${now}, statement_timestamp() AT TIME ZONE 'UTC')
+          ORDER BY "expiresAt", "key" LIMIT ${batchSize} FOR UPDATE SKIP LOCKED
+        )
+        DELETE FROM "AuthRateLimitBucket" AS target USING expired
+        WHERE target."key" = expired."key" RETURNING target."key"`;
       return {
         appleAttempts: apple.length,
         naverAttempts: naver.length,
         sessions: sessions.length,
+        rateLimitBuckets: buckets.length,
       };
     });
   }

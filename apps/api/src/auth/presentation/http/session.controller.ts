@@ -1,5 +1,8 @@
+import { AuthRateLimit } from './auth-rate-limit.js';
+import { AuthIpRateLimitGuard } from './auth-rate-limit.guard.js';
 import {
   Body,
+  UseGuards,
   Controller,
   HttpCode,
   HttpStatus,
@@ -29,6 +32,7 @@ import {
 } from './auth-openapi.js';
 
 @Controller('auth')
+@UseGuards(AuthIpRateLimitGuard)
 @ApiTags('세션')
 export class SessionController {
   constructor(
@@ -39,6 +43,7 @@ export class SessionController {
   ) {}
 
   @Post('token/refresh')
+  @AuthRateLimit('refresh')
   @HttpCode(HttpStatus.OK)
   @ApiOperation({
     summary: '서비스 토큰 갱신',
@@ -65,6 +70,7 @@ export class SessionController {
   }
 
   @Post('logout')
+  @AuthRateLimit('logout')
   @HttpCode(HttpStatus.NO_CONTENT)
   @ApiOperation({
     summary: '서비스 세션 로그아웃',

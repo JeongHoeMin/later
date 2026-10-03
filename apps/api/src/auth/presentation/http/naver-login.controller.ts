@@ -1,6 +1,9 @@
+import { AuthRateLimit } from './auth-rate-limit.js';
+import { AuthIpRateLimitGuard } from './auth-rate-limit.guard.js';
 import {
   BadRequestException,
   Body,
+  UseGuards,
   Controller,
   Get,
   Header,
@@ -44,6 +47,8 @@ export class NaverLoginStartResponseDto {
 }
 
 @Controller('auth/social/naver')
+@UseGuards(AuthIpRateLimitGuard)
+@AuthRateLimit('login')
 @ApiTags('인증')
 export class NaverLoginController {
   constructor(@Inject(NaverLoginFlow) private readonly flow: NaverLoginFlow) {}

@@ -1,3 +1,5 @@
+import { AUTH_RATE_LIMIT_REPOSITORY } from '@auth/application/ports/auth-rate-limit.repository.js';
+import { TestAuthRateLimitRepository } from './helpers/test-auth-rate-limit.repository.js';
 import { Test, TestingModule } from '@nestjs/testing';
 import { INestApplication } from '@nestjs/common';
 import request from 'supertest';
@@ -22,6 +24,8 @@ describe('AppController (e2e)', () => {
     const moduleFixture: TestingModule = await Test.createTestingModule({
       imports: [AppModule],
     })
+      .overrideProvider(AUTH_RATE_LIMIT_REPOSITORY)
+      .useValue(new TestAuthRateLimitRepository())
       .overrideProvider(PrismaClient)
       .useValue({
         $connect: async () => {},

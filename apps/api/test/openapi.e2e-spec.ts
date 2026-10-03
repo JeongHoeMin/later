@@ -1,3 +1,5 @@
+import { AUTH_RATE_LIMIT_REPOSITORY } from '@auth/application/ports/auth-rate-limit.repository.js';
+import { TestAuthRateLimitRepository } from './helpers/test-auth-rate-limit.repository.js';
 import { Controller, Get, type INestApplication } from '@nestjs/common';
 import { Test } from '@nestjs/testing';
 import { afterAll, beforeAll, describe, expect, it, vi } from 'vitest';
@@ -33,6 +35,8 @@ describe('OpenAPI 조회 (e2e)', () => {
       imports: [AppModule],
       controllers: [DocumentationTestController],
     })
+      .overrideProvider(AUTH_RATE_LIMIT_REPOSITORY)
+      .useValue(new TestAuthRateLimitRepository())
       .overrideProvider(PrismaClient)
       .useValue({ $connect: async () => {}, $disconnect: async () => {} })
       .compile();

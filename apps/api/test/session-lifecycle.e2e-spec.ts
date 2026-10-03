@@ -1,3 +1,5 @@
+import { AUTH_RATE_LIMIT_REPOSITORY } from '@auth/application/ports/auth-rate-limit.repository.js';
+import { TestAuthRateLimitRepository } from './helpers/test-auth-rate-limit.repository.js';
 import { USER_ACCOUNT_REPOSITORY } from '@users/application/ports/user-account.repository.js';
 import { Logger, type INestApplication } from '@nestjs/common';
 import { Test } from '@nestjs/testing';
@@ -17,6 +19,8 @@ import { AppModule } from '../src/app.module.js';
 import { PrismaClient } from '@db/client.js';
 import { REFRESH_SESSION_REPOSITORY } from '@auth/application/ports/refresh-session.repository.js';
 import { SecureRefreshTokenGenerator } from '@auth/infrastructure/tokens/secure-refresh-token-generator.js';
+
+const rateLimits = new TestAuthRateLimitRepository();
 
 describe('세션 갱신과 로그아웃 (e2e)', () => {
   let app: INestApplication<App>;
@@ -39,6 +43,8 @@ describe('세션 갱신과 로그아웃 (e2e)', () => {
     const module = await Test.createTestingModule({ imports: [AppModule] })
       .overrideProvider(USER_ACCOUNT_REPOSITORY)
       .useValue({ exists: async () => true })
+      .overrideProvider(AUTH_RATE_LIMIT_REPOSITORY)
+      .useValue(rateLimits)
       .overrideProvider(PrismaClient)
       .useValue({ $connect: async () => {}, $disconnect: async () => {} })
       .overrideProvider(REFRESH_SESSION_REPOSITORY)
@@ -48,6 +54,7 @@ describe('세션 갱신과 로그아웃 (e2e)', () => {
     await app.init();
   });
   beforeEach(() => {
+    rateLimits.buckets.clear();
     sessions.findUserId.mockReset().mockResolvedValue('verified-user');
     sessions.rotate.mockReset().mockResolvedValue('rotated');
     sessions.revokeByHash.mockReset().mockResolvedValue(undefined);

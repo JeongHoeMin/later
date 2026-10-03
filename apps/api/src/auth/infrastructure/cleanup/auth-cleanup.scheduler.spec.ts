@@ -2,7 +2,12 @@ import { describe, it, expect, vi, afterEach } from 'vitest';
 import { AuthCleanupScheduler } from './auth-cleanup.scheduler.js';
 import { CleanupExpiredAuthUseCase } from '../../application/cleanup-expired-auth.use-case.js';
 const hour = 60 * 60 * 1000;
-const counts = { appleAttempts: 2, naverAttempts: 3, sessions: 4 };
+const counts = {
+  appleAttempts: 2,
+  naverAttempts: 3,
+  sessions: 4,
+  rateLimitBuckets: 0,
+};
 function setup() {
   vi.useFakeTimers();
   const execute = vi.fn().mockResolvedValue(counts);

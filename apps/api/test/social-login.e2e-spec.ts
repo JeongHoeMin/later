@@ -1,3 +1,5 @@
+import { AUTH_RATE_LIMIT_REPOSITORY } from '@auth/application/ports/auth-rate-limit.repository.js';
+import { TestAuthRateLimitRepository } from './helpers/test-auth-rate-limit.repository.js';
 import { USER_ACCOUNT_REPOSITORY } from '@users/application/ports/user-account.repository.js';
 import { Logger, type INestApplication } from '@nestjs/common';
 import { Test } from '@nestjs/testing';
@@ -20,6 +22,8 @@ import { SocialAuthenticationFailedError } from '@auth/domain/errors/social-auth
 import { AUTH_SESSION_REPOSITORY } from '@auth/application/ports/auth-session.repository.js';
 import { createHash } from 'node:crypto';
 import { jwtVerify } from 'jose';
+
+const rateLimits = new TestAuthRateLimitRepository();
 
 describe('POST /auth/social/login (e2e)', () => {
   let app: INestApplication<App>;
@@ -44,6 +48,8 @@ describe('POST /auth/social/login (e2e)', () => {
     const module = await Test.createTestingModule({ imports: [AppModule] })
       .overrideProvider(USER_ACCOUNT_REPOSITORY)
       .useValue({ exists: async () => true })
+      .overrideProvider(AUTH_RATE_LIMIT_REPOSITORY)
+      .useValue(rateLimits)
       .overrideProvider(PrismaClient)
       .useValue({ $connect: async () => {}, $disconnect: async () => {} })
       .overrideProvider(GoogleAuthProvider)
@@ -58,6 +64,7 @@ describe('POST /auth/social/login (e2e)', () => {
   });
 
   beforeEach(() => {
+    rateLimits.buckets.clear();
     google.authenticate
       .mockReset()
       .mockResolvedValue({ subject: 'verified-subject' });

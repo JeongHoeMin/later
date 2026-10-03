@@ -1,3 +1,5 @@
+import { AUTH_RATE_LIMIT_REPOSITORY } from '@auth/application/ports/auth-rate-limit.repository.js';
+import { TestAuthRateLimitRepository } from './helpers/test-auth-rate-limit.repository.js';
 import { Test } from '@nestjs/testing';
 import { Logger, type INestApplication } from '@nestjs/common';
 import request from 'supertest';
@@ -49,6 +51,8 @@ describe('회원 탈퇴 HTTP', () => {
         operation(prisma),
     };
     const module = await Test.createTestingModule({ imports: [AppModule] })
+      .overrideProvider(AUTH_RATE_LIMIT_REPOSITORY)
+      .useValue(new TestAuthRateLimitRepository())
       .overrideProvider(PrismaClient)
       .useValue(prisma)
       .compile();

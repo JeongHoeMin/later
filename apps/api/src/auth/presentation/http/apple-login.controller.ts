@@ -1,6 +1,9 @@
+import { AuthRateLimit } from './auth-rate-limit.js';
+import { AuthIpRateLimitGuard } from './auth-rate-limit.guard.js';
 import {
   BadRequestException,
   Body,
+  UseGuards,
   Controller,
   Inject,
   Post,
@@ -15,6 +18,8 @@ import {
 import { ApiAuthErrors, AppleLoginStartResponseDto } from './auth-openapi.js';
 
 @Controller('auth/social/apple')
+@UseGuards(AuthIpRateLimitGuard)
+@AuthRateLimit('login')
 @ApiTags('인증')
 export class AppleLoginController {
   constructor(

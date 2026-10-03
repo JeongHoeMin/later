@@ -1,3 +1,5 @@
+현재 구현된 사용자 규칙과 보존·탈퇴·제한 정책은 [서비스 정책](../../../../../../docs/service-policy.md)을 따른다.
+
 # 소셜 로그인 HTTP API
 
 `POST /auth/social/login`
@@ -157,3 +159,7 @@ Access Token은 15분, 로그인 세션은 30일간 유효하다. Refresh Token�
 ### 마이그레이션 적용
 
 연동 기능 사용 전에 `20261003073000_user_social_account_link`를 배포한다. 회원/제공자 유일 제약과 시도 ownerUserId FK를 추가하며 기존 행 삭제·계정 통합은 하지 않는다. 기존 `(userId, provider)` 중복이 있으면 migration은 실패하므로 사전에 중복을 점검하고 별도 정책을 정한다. 기존 로그인 시도의 ownerUserId는NULL이고 연동 시도는 회원 ID다. 이 nullable owner가 시도의 로그인/연동 목적을 구분한다.
+
+## 인증 요청 제한
+
+로그인·Apple/Naver start·Naver callback은 IP별 공유 60초 20회, refresh와 logout은 각각 IP별 60회, 연동·연동 start는 IP별 및 회원별 각각 공유 10회다. 허용 횟수 초과 시 `429 / RATE_LIMIT_EXCEEDED`와 `Retry-After` 헤더(초)를 반환한다. 첫 요청 기준 60초 창이며 실패도 소비하고 차단 요청은 만료를 연장하지 않는다. IP 검사, 인증, 회원 검사 순으로 실행한다. 공유 PostgreSQL 카운터 장애는 500이며 제한을 우회하지 않는다. 읽기·탈퇴 경로는 이번 제한 대상이 아니다.

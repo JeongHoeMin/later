@@ -1,3 +1,5 @@
+import { AUTH_RATE_LIMIT_REPOSITORY } from '@auth/application/ports/auth-rate-limit.repository.js';
+import { TestAuthRateLimitRepository } from './helpers/test-auth-rate-limit.repository.js';
 import { Test } from '@nestjs/testing';
 import { Logger, type INestApplication } from '@nestjs/common';
 import request from 'supertest';
@@ -32,6 +34,8 @@ import { SocialAccountConflictError } from '@users/domain/errors/social-account-
 import { SocialAuthenticationFailedError } from '@auth/domain/errors/social-authentication-failed.error.js';
 import { SocialAuthenticationUnavailableError } from '@auth/domain/errors/social-authentication-unavailable.error.js';
 import { setupOpenApi } from '../src/common/openapi/setup-openapi.js';
+
+const rateLimits = new TestAuthRateLimitRepository();
 
 describe('소셜 계정 연동 HTTP', () => {
   let app: INestApplication<App>;
@@ -98,6 +102,8 @@ describe('소셜 계정 연동 HTTP', () => {
     }))
       vi.stubEnv(key, value);
     const module = await Test.createTestingModule({ imports: [AppModule] })
+      .overrideProvider(AUTH_RATE_LIMIT_REPOSITORY)
+      .useValue(rateLimits)
       .overrideProvider(PrismaClient)
       .useValue({ $connect: async () => {}, $disconnect: async () => {} })
       .overrideProvider(USER_ACCOUNT_REPOSITORY)
@@ -125,6 +131,7 @@ describe('소셜 계정 연동 HTTP', () => {
     ).accessToken;
   });
   beforeEach(() => {
+    rateLimits.buckets.clear();
     attempts.clear();
     google.authenticate
       .mockReset()

@@ -1,6 +1,9 @@
+import { AuthRateLimit } from './auth-rate-limit.js';
+import { AuthIpRateLimitGuard } from './auth-rate-limit.guard.js';
 import { NaverLoginFlow } from '@auth/application/naver-login-flow.js';
 import {
   Body,
+  UseGuards,
   Controller,
   Header,
   HttpCode,
@@ -30,6 +33,8 @@ import {
 export type SocialLoginResponse = SocialSignInResult;
 
 @Controller('auth/social')
+@UseGuards(AuthIpRateLimitGuard)
+@AuthRateLimit('login')
 @ApiTags('인증')
 export class SocialLoginController {
   constructor(

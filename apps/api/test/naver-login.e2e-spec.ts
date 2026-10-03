@@ -1,3 +1,5 @@
+import { AUTH_RATE_LIMIT_REPOSITORY } from '@auth/application/ports/auth-rate-limit.repository.js';
+import { TestAuthRateLimitRepository } from './helpers/test-auth-rate-limit.repository.js';
 import { USER_ACCOUNT_REPOSITORY } from '@users/application/ports/user-account.repository.js';
 import { createHash } from 'node:crypto';
 import { Logger, type INestApplication } from '@nestjs/common';
@@ -23,6 +25,8 @@ import {
   type NaverLoginAttempt,
 } from '@auth/application/ports/naver-login-attempt.repository.js';
 import { AUTH_SESSION_REPOSITORY } from '@auth/application/ports/auth-session.repository.js';
+
+const rateLimits = new TestAuthRateLimitRepository();
 
 describe('네이버 소셜 로그인 (e2e)', () => {
   let app: INestApplication<App>;
@@ -95,6 +99,8 @@ describe('네이버 소셜 로그인 (e2e)', () => {
     const module = await Test.createTestingModule({ imports: [AppModule] })
       .overrideProvider(USER_ACCOUNT_REPOSITORY)
       .useValue({ exists: async () => true })
+      .overrideProvider(AUTH_RATE_LIMIT_REPOSITORY)
+      .useValue(rateLimits)
       .overrideProvider(PrismaClient)
       .useValue({ $connect: async () => {}, $disconnect: async () => {} })
       .overrideProvider(NAVER_LOGIN_ATTEMPTS)
@@ -110,6 +116,7 @@ describe('네이버 소셜 로그인 (e2e)', () => {
     await app.init();
   });
   beforeEach(() => {
+    rateLimits.buckets.clear();
     rows.clear();
     http
       .mockReset()

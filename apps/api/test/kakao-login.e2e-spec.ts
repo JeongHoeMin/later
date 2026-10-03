@@ -1,3 +1,5 @@
+import { AUTH_RATE_LIMIT_REPOSITORY } from '@auth/application/ports/auth-rate-limit.repository.js';
+import { TestAuthRateLimitRepository } from './helpers/test-auth-rate-limit.repository.js';
 import { createHash } from 'node:crypto';
 import { Logger, type INestApplication } from '@nestjs/common';
 import { Test } from '@nestjs/testing';
@@ -18,6 +20,8 @@ import { PrismaClient } from '@db/client.js';
 import { GoogleAuthProvider } from '@auth/infrastructure/google/google-auth-provider.js';
 import { SOCIAL_USER_REPOSITORY } from '@users/application/ports/social-user.repository.js';
 import { AUTH_SESSION_REPOSITORY } from '@auth/application/ports/auth-session.repository.js';
+
+const rateLimits = new TestAuthRateLimitRepository();
 
 describe('카카오 소셜 로그인 (e2e)', () => {
   let app: INestApplication<App>;
@@ -42,6 +46,8 @@ describe('카카오 소셜 로그인 (e2e)', () => {
     vi.stubGlobal('fetch', http);
     log = vi.spyOn(Logger.prototype, 'error').mockImplementation(() => {});
     const module = await Test.createTestingModule({ imports: [AppModule] })
+      .overrideProvider(AUTH_RATE_LIMIT_REPOSITORY)
+      .useValue(rateLimits)
       .overrideProvider(PrismaClient)
       .useValue({ $connect: async () => {}, $disconnect: async () => {} })
       .overrideProvider(GoogleAuthProvider)
@@ -56,6 +62,7 @@ describe('카카오 소셜 로그인 (e2e)', () => {
   });
 
   beforeEach(() => {
+    rateLimits.buckets.clear();
     http.mockReset().mockResolvedValue(Response.json(valid));
     google.authenticate.mockReset();
     users.findBySocialAccount

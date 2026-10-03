@@ -95,3 +95,11 @@ model SocialAccount {
   @@unique([userId, provider])
   @@index([userId])
 }
+
+model AuthRateLimitBucket {
+  key       String   @id @db.Char(64)
+  hits      Int
+  expiresAt DateTime
+
+  @@index([expiresAt])
+}
