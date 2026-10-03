@@ -44,6 +44,13 @@ Requirement → Acceptance Criteria → Test 설계 → RED → 최소 구현 �
 - Blocker에는 원인과 재개 조건을 적는다. 미완료 Next Action은 테스트 ID, 현재 상태, 수정 대상, 재실행 명령, 필요한 승인을 포함한다.
 - completed Task의 next_action은 null이다. 다음 Task 제안은 관련 Task의 progress.md와 최종 보고에 남긴다. 전체 목록은 Task Directory에서 계산한다.
 
+## 서비스 정책 문서 갱신
+
+- 구현된 서비스 정책의 기준 문서는 [docs/service-policy.md](../docs/service-policy.md)다. 정책이 포함된 작업을 시작할 때 관련 항목을 읽는다.
+- 가입·로그인·권한·제한 횟수·유효기간·탈퇴·보존/삭제·결제 등 사용자에게 영향을 주는 규칙을 새로 구현하거나 변경하면 **항상 같은 파일의 해당 항목을 구현과 함께 갱신**한다. 기능별 별도 문서로 기준 정책을 분산하지 않는다. 상세 API/운영 문서는 링크로 연결한다.
+- 코드로 확인된 구현 정책과 미구현 기획·운영 적용 상태를 구분하고 수치·조건·예외·오류·미지원 범위를 기록한다. 비밀값이나 운영 인증 정보는 적지 않는다.
+- Task requirement에서 정책 영향을 확인하고 progress/verification에 갱신 항목과 코드 대조 결과를 남긴다. 정책 영향이 없으면 해당 없음을 기록한다. 정책 문서 갱신과 검증을 완료하기 전 Task completed·커밋으로 진행하지 않는다.
+
 ## 검증과 완료
 
 필수 R/AC와 필요한 RED, GREEN, Refactoring 후 결과를 확인한다. 관련 테스트와 변경된 앱의 전체 Suite, 타입·린트·빌드 등 [프로젝트 검증](project.md#검증)을 수행하고 결과를 기록한다.

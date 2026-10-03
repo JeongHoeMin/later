@@ -6,6 +6,10 @@ pnpm workspace: `apps/api`는 NestJS/TypeScript API, `apps/mobile`은 Expo/React
 버전은 각 package.json과 pnpm-lock.yaml에서 확인한다. 루트에서 `pnpm install --frozen-lockfile`로 설치하며 패키지 관리자를 섞지 않는다.
 모바일 변경은 [모바일 지침](../apps/mobile/AGENTS.md)을 추가로 읽는다. Expo 패키지는 해당 SDK에 맞는 `expo install`을 사용한다.
 
+## 서비스 정책
+
+[docs/service-policy.md](../docs/service-policy.md)는 현재 구현된 서비스 정책의 단일 기준 문서다. 서비스 정책이 포함된 기능 구현·수정 시 반드시 관련 항목을 읽고 **이 파일을 함께 갱신**한다. 새 도메인 정책도 같은 파일에 항목을 추가한다. 수치·적용 조건·예외·미지원·운영 적용 상태를 실제 코드와 대조하고 Task 검증에 남긴다. 완료 기준과 자세한 절차는 [공통 Workflow](AGENTS.md#서비스-정책-문서-갱신)를 따른다.
+
 ## API 설계
 
 - 목표: 구글·카카오·네이버·애플 소셜 계정으로 간편 회원가입과 로그인. 자체 비밀번호 회원가입은 없다. 현재 구현 상태는 해당 브랜치의 Task 문서에서 확인한다. 목표를 구현 완료로 간주하지 않는다.

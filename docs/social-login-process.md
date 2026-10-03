@@ -1,3 +1,5 @@
+> 현재 구현된 서비스 정책은 [서비스 정책](service-policy.md)을 기준으로 한다. 이 문서는 앱과 서버의 소셜 로그인 연동 절차다.
+
 # 소셜 로그인 서버 계약과 모바일 연동 참고
 
 기준: feat/auth, 2026-10-02. 구현된 서버 API와 모바일 연동 계약을 설명한다. 모바일 코드와 기기 로그인 검증은 이번 서버 작업에 포함하지 않는다. 실행 중인 서버의 계약은 GET /docs-json으로 확인하며 코드 변경 후 재시작 또는 배포가 필요하다.
@@ -98,7 +100,7 @@ Access Token 15분, 서비스 세션 30일. Refresh Token은 플랫폼 보안 �
 - `GET /auth/me`: Authorization: Bearer 서비스 Access Token. 200 {"user":{"id":"LATER_USER_UUID"}}. 갱신 응답에 user가 없으므로 앱 복원 시 새 Access Token으로 호출한다.
 - `POST /auth/logout`: 같은 refreshToken 본문. 해당 세션 폐기 후 204. 이미 폐기된/알 수 없는 토큰도 204, 다른 기기 세션 유지.
 
-/auth/me는 JWT sub만 확인하며 DB 회원 존재·탈퇴·권한·세션 폐기 상태를 조회하지 않는다. 로그아웃 후 기존 Access Token도 만료까지 유효하다.
+/auth/me는 JWT와 DB 회원 존재를 확인한다. 탈퇴 회원은 거부하며 세션 폐기 상태·별도 권한은 조회하지 않는다. 로그아웃 후 기존 Access Token도 만료까지 유효하다.
 
 ## 오류와 재시도
 
@@ -132,7 +134,7 @@ Access Token 15분, 서비스 세션 30일. Refresh Token은 플랫폼 보안 �
 
 앱 반환 주소와 브리지 키를 설정하지 않으면 네이버 경로는 503이다. 브리지 ENV를 다른 제공자 경로의 시작 조건으로 요구하지는 않는다. 앱 URI는 HTTPS 또는 허용 커스텀 스킴의 고정 주소다. query·fragment·URL 인증 정보 금지. Callback은 HTTPS이고 경로는 /auth/social/naver/callback. 요청에서 redirect URI를 선택할 수 없다.
 
-브리지 키는 서버 인스턴스 간 같아야 한다. 교체하면 진행 중인 암호화 시도를 사용할 수 없어 새 로그인이 필요하다. 완료 grant는 삭제하지만 만료/사용 완료 행 자동 정리는 아직 없어 운영 정리 정책이 필요하다.
+브리지 키는 서버 인스턴스 간 같아야 한다. 교체하면 진행 중인 암호화 시도를 사용할 수 없어 새 로그인이 필요하다. 완료 grant는 소비 시 삭제하며 만료된 시도·세션은 서버 시작 1시간 후부터 매시간 테이블별 최대 500개 자동 정리한다. 사용 완료 토큰은 세션 만료까지 보존한다.
 
 운영 적용에는 새 서버 재시작/배포, 운영 DB migration deploy, 실제 앱 URI/키와 HTTPS 경로 연결이 필요하다. 개발 later_dev/테스트 later_test에는 migration을 적용했다. 콘솔 URL 등록이 서버 배포 완료를 뜻하지 않는다. 프록시 접근 로그에서 Callback의 code/state query와 인증 본문·토큰을 제외한다. 새 네이버 응답은 no-store, Callback은 no-referrer이다.
 
@@ -159,3 +161,7 @@ Access Token 15분, 서비스 세션 30일. Refresh Token은 플랫폼 보안 �
 Apple/Naver 연동은 `/users/me/social-accounts/apple/start`, `/users/me/social-accounts/naver/start`를 Bearer로 먼저 호출한다. 일반 로그인용 시작 시도와 혼용할 수 없고 다른 회원이 완료할 수 없다. Naver callback 주소는 기존 서버 callback을 재사용한다. 앱은 시작 당시의 로그인 회원과 ID/비밀값을 유지하며 회원이 바뀌면 새 연동으로 시작한다.
 
 동일 계정 연결은 새 유효 인증 증거로 재시도하면200, 다른 회원에게 연결됐거나 같은 제공자의 다른 계정이면409 SOCIAL_ACCOUNT_CONFLICT다. 일회용 시도는 성공·소비 후 재전송하지 않는다. 계정 병합/교체/연동 해제는 지원하지 않는다. 자세한 입력·오류·탈퇴 범위는 [HTTP 계약](../apps/api/src/auth/presentation/http/README.md)을 따른다.
+
+## 인증 요청 제한
+
+로그인·시작·callback은 IP별 합계 60초 20회, 갱신과 로그아웃은 각각 IP별 60회, 연동·연동 시작은 IP별 및 회원별 각각 합계 10회다. 초과 시 429/RATE_LIMIT_EXCEEDED와 Retry-After 초를 받으며 대기 후 재시도한다. 상세 창·프록시·장애 정책은 [서비스 정책](service-policy.md#인증-api-요청-제한)을 따른다.
