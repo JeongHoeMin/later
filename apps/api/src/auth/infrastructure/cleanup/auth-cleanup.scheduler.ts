@@ -15,21 +15,20 @@ export class AuthCleanupScheduler implements OnModuleInit, OnModuleDestroy {
   ) {}
   onModuleInit(): void {
     if (this.timer) return;
-    this.timer = setInterval(
-      () => {
-        if (this.currentRun) return;
-        this.currentRun = this.run().finally(() => {
-          this.currentRun = undefined;
-        });
-      },
-      60 * 60 * 1000,
-    );
+    this.timer = setInterval(() => this.startRun(), 5 * 60 * 1000);
     this.timer.unref();
+    this.startRun();
   }
   async onModuleDestroy(): Promise<void> {
     if (this.timer) clearInterval(this.timer);
     this.timer = undefined;
     await this.currentRun;
+  }
+  private startRun(): void {
+    if (this.currentRun) return;
+    this.currentRun = this.run().finally(() => {
+      this.currentRun = undefined;
+    });
   }
   private async run(): Promise<void> {
     try {

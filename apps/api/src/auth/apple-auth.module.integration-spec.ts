@@ -5,6 +5,7 @@ import { describe, expect, it, vi } from 'vitest';
 import { exportJWK, generateKeyPair, SignJWT } from 'jose';
 import { PrismaClient } from '@db/client.js';
 import { AuthModule } from './auth.module.js';
+import { AuthCleanupScheduler } from './infrastructure/cleanup/auth-cleanup.scheduler.js';
 import { StartAppleLoginUseCase } from './application/start-apple-login.use-case.js';
 import { SocialSignInUseCase } from './application/social-sign-in.use-case.js';
 import { SocialAuthenticationFailedError } from './domain/errors/social-authentication-failed.error.js';
@@ -25,6 +26,7 @@ describe('Apple AuthModule integration', () => {
       'test-only-secret-with-at-least-32-bytes',
     );
     const subject = randomUUID();
+    const preservedAttemptId = randomUUID();
     const ids: string[] = [];
     let module: TestingModule | undefined;
     let prisma: PrismaClient | undefined;
@@ -42,8 +44,25 @@ describe('Apple AuthModule integration', () => {
       );
       module = await Test.createTestingModule({
         imports: [AuthModule],
-      }).compile();
+      })
+        // Background cleanup is covered separately and must not delete other test owners' rows.
+        .overrideProvider(AuthCleanupScheduler)
+        .useValue({})
+        .compile();
+      prisma = module.get<PrismaClient>(PrismaClient);
+      await prisma.appleLoginAttempt.create({
+        data: {
+          id: preservedAttemptId,
+          nonceHash: 'p'.repeat(64),
+          expiresAt: new Date(0),
+        },
+      });
       await module.init();
+      expect(
+        await prisma.appleLoginAttempt.findUnique({
+          where: { id: preservedAttemptId },
+        }),
+      ).not.toBeNull();
       const db = module.get<PrismaClient>(PrismaClient);
       prisma = db;
       const login = module.get(SocialSignInUseCase);
@@ -91,6 +110,9 @@ describe('Apple AuthModule integration', () => {
     } finally {
       try {
         if (prisma) {
+          await prisma.appleLoginAttempt.deleteMany({
+            where: { id: preservedAttemptId },
+          });
           await prisma.user.deleteMany({
             where: { socialAccounts: { some: { provider: 'apple', subject } } },
           });

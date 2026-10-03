@@ -40,7 +40,7 @@ JWT 검증 후 보호 API는 PostgreSQL에서 회원 존재 여부도 확인한�
 | Redis         | 인스턴스 간 공유 인증 요청 제한. 회원·세션 저장이나 일반 캐시/큐 용도로 사용하지 않음                                | [요청 제한 Module](../apps/api/src/auth/auth-rate-limit.module.ts), [Redis 저장소](../apps/api/src/auth/infrastructure/rate-limit/redis-auth-rate-limit.repository.ts) |
 | 소셜 제공자   | Google/Apple ID Token 검증, Kakao Access Token 확인, Naver 서버 코드 교환·프로필 확인                                | [AuthModule](../apps/api/src/auth/auth.module.ts), [소셜 로그인 흐름](social-login-process.md)                                                                         |
 | JWT           | API 프로세스에서 비밀키로 발급·검증. 자체 Access Token을 Redis에 저장하지 않음                                       | [AccessTokenModule](../apps/api/src/auth/access-token.module.ts), [토큰 안내](../apps/api/src/auth/infrastructure/tokens/README.md)                                    |
-| 정리 스케줄러 | 각 API 프로세스 내부에서 시작1시간 후부터 매시간 만료 데이터를 정리. 별도 작업 서버 없음                             | [정리 안내](../apps/api/src/auth/infrastructure/cleanup/README.md)                                                                                                     |
+| 정리 스케줄러 | 각 API 프로세스 내부에서 시작 즉시와5분마다 정리. 최대10배치·배치당500개와 배치 사이10초 예산. 별도 작업 서버 없음   | [정리 안내](../apps/api/src/auth/infrastructure/cleanup/README.md)                                                                                                     |
 | API 명세      | 같은 API에서 `/docs` Swagger UI와 `/docs-json` 제공                                                                  | [OpenAPI 설정](../apps/api/src/common/openapi/setup-openapi.ts), [명세 안내](openapi.md)                                                                               |
 | 관측          | 자체 요청 로그와 Nest Observe instrumentation 코드가 존재. Observe 설정은 placeholder이며 실제 수집·보존 상태 미확인 | [AppModule](../apps/api/src/app.module.ts)                                                                                                                             |
 
@@ -51,7 +51,7 @@ JWT 검증 후 보호 API는 PostgreSQL에서 회원 존재 여부도 확인한�
 1. **소셜 로그인:** 요청 제한을 Redis에서 확인하고 제공자 자격 증명을 검증한다. `(provider, subject)`로 회원을 조회·생성한 뒤 PostgreSQL에 세션·Refresh Token 해시를 저장하고 자체 JWT와 Refresh Token을 반환한다. Apple/Naver의 일회성 시도는 PostgreSQL에서 관리한다.
 2. **보호 API:** JWT를 검증하고 PostgreSQL에서 회원 존재를 확인한다. 본인 소셜 목록 조회·연동·탈퇴 유스케이스로 연결한다. 연동은 기존 회원에 검증된 제공자 계정을 추가한다.
 3. **갱신·로그아웃:** Redis 요청 제한 뒤 PostgreSQL 세션/토큰 상태를 검사하고 회전 또는 폐기한다. 갱신 시 새 JWT를 발급한다.
-4. **탈퇴·만료 정리:** 탈퇴는 회원과 연결된 데이터를 PostgreSQL cascade로 삭제한다. 만료 정리는 API 내부 스케줄러가 배치로 수행한다. Redis 제한 키는 TTL로 자동 삭제되어 해당 정리 작업에 의존하지 않는다.
+4. **탈퇴·만료 정리:** 탈퇴는 회원과 연결된 데이터를 PostgreSQL cascade로 삭제한다. 만료 정리는 API 내부 스케줄러가 배치별 트랜잭션으로 반복 수행한다. AuthSession(expiresAt,id) 인덱스가 정리를, Apple/Naver(ownerUserId) 인덱스가 탈퇴 시 소유자 조회를 지원한다. Redis 제한 키는 TTL로 자동 삭제되어 해당 정리 작업에 의존하지 않는다.
 
 수명·제한 횟수·재사용 탐지·삭제 예외는 중복 정의하지 않고 [서비스 정책](service-policy.md)을 따른다.
 

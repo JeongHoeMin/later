@@ -11,6 +11,7 @@ import {
   expect,
 } from 'vitest';
 import { PrismaClient } from '@db/client.js';
+import { CleanupExpiredAuthUseCase } from '../../application/cleanup-expired-auth.use-case.js';
 import { PrismaAuthCleanupRepository } from './prisma-auth-cleanup.repository.js';
 import { PrismaAuthSessionRepository } from './prisma-auth-session.repository.js';
 
@@ -109,6 +110,60 @@ describe('인증 만료 데이터 실제 DB 정리', () => {
       include: { refreshTokens: true },
     });
   }
+  async function expiredAppleBatch() {
+    const ids = Array.from({ length: 501 }, () => randomUUID());
+    appleIds.push(...ids);
+    await prisma.appleLoginAttempt.createMany({
+      data: ids.map((id) => ({
+        id,
+        nonceHash: 'a'.repeat(64),
+        expiresAt: time(-1),
+      })),
+    });
+    return ids;
+  }
+  it('실제 DB에서500개를 넘는 만료 행을 여러 배치로 정리한다', async () => {
+    const ids = await expiredAppleBatch();
+    const valid = await apple(time(1));
+    const result = await new CleanupExpiredAuthUseCase(
+      repository,
+      () => now,
+    ).execute();
+    expect(result).toEqual({
+      appleAttempts: 501,
+      naverAttempts: 0,
+      sessions: 0,
+      rateLimitBuckets: 0,
+      batches: 2,
+      limitReached: false,
+    });
+    expect(
+      await prisma.appleLoginAttempt.count({ where: { id: { in: ids } } }),
+    ).toBe(0);
+    expect(
+      await prisma.appleLoginAttempt.findUnique({ where: { id: valid } }),
+    ).not.toBeNull();
+  });
+  it('다음 배치가 실패해도 이전 성공 배치는 유지하고 다음 실행에서 잔여를 처리한다', async () => {
+    const ids = await expiredAppleBatch();
+    let calls = 0;
+    const failing = {
+      deleteExpired: async (cutoff: Date, size: number) => {
+        if (++calls === 2) throw new Error('test-only-next-batch-error');
+        return repository.deleteExpired(cutoff, size);
+      },
+    };
+    await expect(
+      new CleanupExpiredAuthUseCase(failing, () => now).execute(),
+    ).rejects.toThrow('test-only-next-batch-error');
+    expect(
+      await prisma.appleLoginAttempt.count({ where: { id: { in: ids } } }),
+    ).toBe(1);
+    expect(
+      (await new CleanupExpiredAuthUseCase(repository, () => now).execute())
+        .appleAttempts,
+    ).toBe(1);
+  });
   it('만료 시각과 같거나 지난 로그인·연동 시도 및 세션만 삭제한다', async () => {
     const expiredApple = [await apple(time(-1)), await apple(now, true, true)];
     const expiredNaver = [await naver(time(-1)), await naver(now, true, true)];

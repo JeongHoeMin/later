@@ -32,6 +32,7 @@ model AppleLoginAttempt {
   createdAt   DateTime  @default(now())
 
   @@index([expiresAt])
+  @@index([ownerUserId])
 }
 
 model NaverLoginAttempt {
@@ -47,6 +48,7 @@ model NaverLoginAttempt {
   createdAt   DateTime  @default(now())
 
   @@index([expiresAt])
+  @@index([ownerUserId])
 }
 
 model User {
@@ -69,6 +71,7 @@ model AuthSession {
   refreshTokens RefreshToken[]
 
   @@index([userId])
+  @@index([expiresAt, id])
 }
 
 model RefreshToken {
