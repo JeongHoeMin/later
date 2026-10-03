@@ -21,3 +21,7 @@ N/A는 이유를 쓰고 실행 불가와 PASS를 구분한다.
 ## Service Policy Verification
 
 [서비스 정책](../../../docs/service-policy.md)의 수치·조건·예외·미지원 범위를 구현과 대조한 결과와 갱신 항목을 적는다. 영향이 없으면 해당 없음과 이유를 기록한다. 정책 문서 검증 전 완료로 표시하지 않는다.
+
+## Service Architecture Verification
+
+[서비스 구성](../../../docs/service-architecture.md)의 구성도·연결·저장소 책임·환경/배포 상태·근거 링크를 코드/설정과 대조한다. 영향이 없으면 이유를 적는다. 갱신·검증 전 완료로 표시하지 않는다.

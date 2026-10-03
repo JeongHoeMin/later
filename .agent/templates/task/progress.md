@@ -39,3 +39,7 @@
 ## Next Action
 
 다음 Agent가 바로 실행할 테스트 ID, 현재 상태, 대상과 명령, 승인 필요 여부를 적는다.
+
+## Service Architecture Update
+
+[서비스 구성](../../../docs/service-architecture.md)의 구성도·설명 갱신 항목과 코드/설정 대조 결과를 기록한다. 영향이 없으면 이유를 적는다.

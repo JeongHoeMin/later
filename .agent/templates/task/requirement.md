@@ -17,3 +17,7 @@
 ## Out of Scope
 
 이번 승인 범위에 포함하지 않는 작업을 작성한다.
+
+## Service Architecture Impact
+
+[서비스 구성](../../../docs/service-architecture.md)의 변경할 구성 요소·연결·역할과 문서 대상 항목을 적는다. 영향이 없으면 이유를 적는다.

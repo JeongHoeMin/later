@@ -51,6 +51,13 @@ Requirement → Acceptance Criteria → Test 설계 → RED → 최소 구현 �
 - 코드로 확인된 구현 정책과 미구현 기획·운영 적용 상태를 구분하고 수치·조건·예외·오류·미지원 범위를 기록한다. 비밀값이나 운영 인증 정보는 적지 않는다.
 - Task requirement에서 정책 영향을 확인하고 progress/verification에 갱신 항목과 코드 대조 결과를 남긴다. 정책 영향이 없으면 해당 없음을 기록한다. 정책 문서 갱신과 검증을 완료하기 전 Task completed·커밋으로 진행하지 않는다.
 
+## 서비스 구성 문서 갱신
+
+- 현재 서비스 구성의 기준은 [docs/service-architecture.md](../docs/service-architecture.md)다. 관련 작업 시작 시 해당 항목을 읽는다.
+- API 모듈/외부 의존성, DB·Redis 등 저장소 역할, 데이터 흐름, 배포·네트워크·백그라운드 작업·관측 구성이 변경되면 **항상 같은 작업에서 이 파일의 구성도와 설명을 갱신**한다.
+- 코드/설정으로 확인한 구현, 계획, 로컬 구성과 운영 적용 상태를 구분하고 비밀값·실제 접속 정보는 기록하지 않는다. 서비스 정책은 기존 단일 기준 문서에 유지한다.
+- Task requirement에 구성 영향을, progress/verification에 갱신 항목과 코드/설정 대조 결과를 기록한다. 영향이 없으면 이유를 적는다. 문서 갱신·검증 전 completed·커밋으로 진행하지 않는다.
+
 ## 검증과 완료
 
 필수 R/AC와 필요한 RED, GREEN, Refactoring 후 결과를 확인한다. 관련 테스트와 변경된 앱의 전체 Suite, 타입·린트·빌드 등 [프로젝트 검증](project.md#검증)을 수행하고 결과를 기록한다.
