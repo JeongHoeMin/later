@@ -55,7 +55,9 @@ JWT 검증 후 보호 API는 PostgreSQL에서 회원 존재 여부도 확인한�
 
 수명·제한 횟수·재사용 탐지·삭제 예외는 중복 정의하지 않고 [서비스 정책](service-policy.md)을 따른다.
 
-Google은 같은 API 프로세스의 OAuth2Client factory를 사용한다. 인증서 HTTP에5초 timeout·자동 retry0을 적용하고 응답 검증을 통과해야 SDK cache에 저장한다. JWT 검증은 SDK가 수행한다. 인증서 장애는503으로 분류한다. [통신 경계 코드](../apps/api/src/auth/infrastructure/google/google-oauth-client.ts)를 기준으로 하며 외부 제공자 전역 동시성 제한/회로 차단기는 아직 없다.
+Google은 같은 API 프로세스의 OAuth2Client factory를 사용한다. 인증서 HTTP에5초 timeout·자동 retry0을 적용하고 응답 검증을 통과해야 SDK cache에 저장한다. JWT 검증은 SDK가 수행한다. 인증서 장애는503으로 분류한다. [통신 경계 코드](../apps/api/src/auth/infrastructure/google/google-oauth-client.ts)를 기준으로 하며 로그인/연동이 같은 제공자 wrapper와 gate를 공유하며 API 인스턴스별·제공자별 동시 검증 기본10개를 제한한다. fleet 전체 제한/회로 차단기는 아직 없다.
+
+AuthOperationsMetrics는 같은 API 프로세스에서 고정4개 제공자 결과·지연·진행량과 정리 작업 결과를 집계하여5분마다 structured log를 기록한다. 별도 metric DB·공개 endpoint·수집 서버·알림 전송은 추가하지 않았다. [운영 지표](auth-operations.md)와 코드가 기준이며 실제 운영 로그 수집/경보 적용은 미확인이다.
 
 ## 로컬 구성과 환경 경계
 

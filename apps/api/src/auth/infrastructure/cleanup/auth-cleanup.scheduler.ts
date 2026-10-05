@@ -1,3 +1,4 @@
+import type { AuthOperationsMetrics } from '../operations/auth-operations.metrics.js';
 import {
   Logger,
   type OnModuleInit,
@@ -12,6 +13,10 @@ export class AuthCleanupScheduler implements OnModuleInit, OnModuleDestroy {
     private readonly logger: Pick<Logger, 'log' | 'error'> = new Logger(
       AuthCleanupScheduler.name,
     ),
+    private readonly metrics?: Pick<
+      AuthOperationsMetrics,
+      'cleanupFinished' | 'cleanupFailed'
+    >,
   ) {}
   onModuleInit(): void {
     if (this.timer) return;
@@ -30,12 +35,30 @@ export class AuthCleanupScheduler implements OnModuleInit, OnModuleDestroy {
       this.currentRun = undefined;
     });
   }
-  private async run(): Promise<void> {
+  private observe(record: () => void): void {
     try {
-      const counts = await this.cleanup.execute();
-      this.logger.log({ event: 'auth.cleanup.completed', ...counts });
+      record();
     } catch {
-      this.logger.error({ event: 'auth.cleanup.failed' });
+      /* Metrics must not affect cleanup. */
     }
+  }
+  private async run(): Promise<void> {
+    const started = performance.now();
+    let counts;
+    try {
+      counts = await this.cleanup.execute();
+    } catch {
+      this.observe(() =>
+        this.metrics?.cleanupFailed(performance.now() - started),
+      );
+      this.observe(() => this.logger.error({ event: 'auth.cleanup.failed' }));
+      return;
+    }
+    this.observe(() =>
+      this.metrics?.cleanupFinished(counts, performance.now() - started),
+    );
+    this.observe(() =>
+      this.logger.log({ event: 'auth.cleanup.completed', ...counts }),
+    );
   }
 }

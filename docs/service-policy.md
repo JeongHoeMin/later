@@ -1,6 +1,6 @@
 # Later 서비스 정책
 
-이 문서는 현재 서버 코드에 구현된 서비스 정책의 기준 문서다. 마지막 확인일은 2026-10-03이며 `feat/auth`의 구현을 기준으로 한다. 저장소 구현과 운영 서버 적용 상태는 다르다. 기획 초안의 미구현 기능을 확정된 정책으로 취급하지 않는다. 향후 서비스 정책이 포함된 구현은 이 파일의 해당 항목을 함께 갱신한다.
+이 문서는 현재 서버 코드에 구현된 서비스 정책의 기준 문서다. 마지막 확인일은 2026-10-05이며 `feat/auth`의 구현을 기준으로 한다. 저장소 구현과 운영 서버 적용 상태는 다르다. 기획 초안의 미구현 기능을 확정된 정책으로 취급하지 않는다. 향후 서비스 정책이 포함된 구현은 이 파일의 해당 항목을 함께 갱신한다.
 
 ## 회원 식별과 소셜 로그인
 
@@ -8,10 +8,18 @@
 - 검증한 제공자와 제공자 회원 식별값의 조합으로 회원을 찾는다. 첫 로그인은 회원과 소셜 연결을 생성하고, 이후 같은 소셜 계정은 같은 회원으로 로그인한다.
 - 이메일이 같아도 회원을 자동 병합하지 않는다. 사용자가 보낸 회원 식별값을 그대로 신뢰하지 않고 서버가 제공자 인증 정보를 검증한다.
 - Google은 허용 Client ID의 ID Token, Kakao는 설정된 앱 ID에 속한 Access Token, Apple은 허용 audience의 ID Token과 서버 시도/nonce를 검증한다. Naver는 서버가 생성한 인가 URL과 callback을 거쳐 서버에서 코드를 교환한다.
-- Google 인증서 HTTP 조회는5초 timeout과 자동 재시도0회를 적용한다. SDK의 인증서 cache는 유지한다. 인증서 통신 실패·HTTP 오류·잘못된 인증서 응답은 로그인/연동에서 `503 / INTERNAL_SERVER_ERROR`, 잘못된 JWT·서명·claims·subject는 `401 / SOCIAL_AUTHENTICATION_FAILED`로 구분한다. 인증서 응답은 검증 후 cache에 반영하며 장애 시 회원·세션·연동을 저장하지 않는다. 외부 오류 원문은 응답하지 않는다. 전역 제공자 동시성 상한/circuit breaker는 아직 없다.
+- Google 인증서 HTTP 조회는5초 timeout과 자동 재시도0회를 적용한다. SDK의 인증서 cache는 유지한다. 인증서 통신 실패·HTTP 오류·잘못된 인증서 응답은 로그인/연동에서 `503 / INTERNAL_SERVER_ERROR`, 잘못된 JWT·서명·claims·subject는 `401 / SOCIAL_AUTHENTICATION_FAILED`로 구분한다. 인증서 응답은 검증 후 cache에 반영하며 장애 시 회원·세션·연동을 저장하지 않는다. 외부 오류 원문은 응답하지 않는다. API 인스턴스 내 제공자 동시성 상한은 아래 정책을 따른다. fleet 전체 제한/circuit breaker는 아직 없다.
 - 소셜 로그인 성공 응답은 회원 ID와 Later Access/Refresh Token이다. 제공자 토큰은 서비스 로그인 응답으로 반환하지 않으며, 회원·세션 저장소에 제공자 토큰 원문을 보관하지 않는다.
 
 근거: [소셜 로그인 유스케이스](../apps/api/src/auth/application/social-login.use-case.ts), [회원 저장소](../apps/api/src/users/infrastructure/persistence/prisma-social-user.repository.ts), [앱 연동 절차](social-login-process.md), [Google 통신 경계](../apps/api/src/auth/infrastructure/google/google-oauth-client.ts).
+
+## 제공자 동시 처리 제한
+
+로그인과 소셜 연동의 제공자 검증은 API 인스턴스별·제공자별 최대10개를 공유한다. `AUTH_PROVIDER_MAX_CONCURRENCY`로1~100 정수를 지정할 수 있고 미설정은10이다. 잘못된 설정은 서버 시작을 거부한다. 다른 제공자의 예산은 독립적이다. 큐에서 기다리지 않고 초과 시 제공자 검증/회원·세션·연동 저장 전에 `503 / INTERNAL_SERVER_ERROR`로 반환한다. 실패·성공 모두 슬롯을 반환한다. 요청 단위 IP/회원 제한은 별도로 먼저 적용된다. 동시 제한 때문에 이미 소비한 IP 예산은 복원하지 않는다.
+
+제공자 호출만 슬롯에 포함하고 이후 회원/세션 DB 저장은 포함하지 않는다. 여러 서버/worker는 각자 예산을 가지며 fleet 전체 Redis 제한은 아니다. Apple 입장 거부는 provider 내부 시도 소비 전에 발생한다. Naver 완료는 기존 grant를 먼저 소비하므로 이후 동시 제한/외부 장애503이면 새 시도로 시작해야 한다. 초과·외부 장애를 구분하는 별도 응답 코드/Retry-After는 없으며 앱은 연속 즉시 재시도를 피한다.
+
+근거: [제공자 gate](../apps/api/src/auth/infrastructure/operations/provider-concurrency-gate.ts), [공유 DI](../apps/api/src/auth/auth.module.ts). 운영 집계의 범위는 [운영 지표](auth-operations.md)를 따른다.
 
 ## 로그인·연동 시도
 

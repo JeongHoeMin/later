@@ -58,9 +58,9 @@ Apple/Naver의 ownerUserId는 회원 탈퇴 cascade FK지만 [연동 migration](
 
 ## 6. 소셜 제공자 지연과 오류 분류
 
-Kakao는 인증 때 token info와 user profile을 순차 호출하고 각각5초 제한이다. Naver는 code exchange와 profile을 각각5초 제한으로 호출한다. 앱 코드에는 전체 제공자 호출의 전역 동시성 상한/circuit breaker가 없다. 여러 IP에서 허용 예산을 소비하면 제공자 지연 동안 동시 대기 요청과 연결이 늘 수 있다. 실제 앞단의 연결 제한 설정은 확인하지 않았다.
+Kakao는 인증 때 token info와 user profile을 순차 호출하고 각각5초 제한이다. Naver는 code exchange와 profile을 각각5초 제한으로 호출한다. API 인스턴스별 제공자 검증 동시 상한 기본10개를 추가했지만 fleet 전체 제한/circuit breaker는 없다. 여러 IP에서 허용 예산을 소비하면 제공자 지연 동안 동시 대기 요청과 연결이 늘 수 있다. 실제 앞단의 연결 제한 설정은 확인하지 않았다.
 
-[Google provider](../apps/api/src/auth/infrastructure/google/google-auth-provider.ts:22)는 verifyIdToken을 사용한다. 설치된 google-auth-library11.1.0은 인증서를 Cache-Control max-age 동안 재사용하므로 매 로그인마다 외부 호출하는 구조는 아니다. 초기 구현은 인증서 GET에 명시 timeout이 없고 재시도가 켜져 있었으며 통신 실패까지401로 바꿨다. 현재 [Google client factory](../apps/api/src/auth/infrastructure/google/google-oauth-client.ts)는 HTTP5초 timeout과 retry0을 적용한다. 응답 인증서 형태/공개키를 SDK cache 저장 전에 검증하여 잘못된 응답 뒤 재시도로 복구할 수 있다. 통신/HTTP/응답 장애는503, JWT/서명/claims 실패는401로 구분한다. 실제 SDK와 HTTP 경계 대체 테스트로 native5초 취소·재시도 없음·cache·회복·Nest DI/HTTP/저장 전 실패를 검증했다. 운영 Google 네트워크의 실제 지연은 미측정이며 전역 동시성 상한은 여전히 후속 과제다.
+[Google provider](../apps/api/src/auth/infrastructure/google/google-auth-provider.ts:22)는 verifyIdToken을 사용한다. 설치된 google-auth-library11.1.0은 인증서를 Cache-Control max-age 동안 재사용하므로 매 로그인마다 외부 호출하는 구조는 아니다. 초기 구현은 인증서 GET에 명시 timeout이 없고 재시도가 켜져 있었으며 통신 실패까지401로 바꿨다. 현재 [Google client factory](../apps/api/src/auth/infrastructure/google/google-oauth-client.ts)는 HTTP5초 timeout과 retry0을 적용한다. 응답 인증서 형태/공개키를 SDK cache 저장 전에 검증하여 잘못된 응답 뒤 재시도로 복구할 수 있다. 통신/HTTP/응답 장애는503, JWT/서명/claims 실패는401로 구분한다. 실제 SDK와 HTTP 경계 대체 테스트로 native5초 취소·재시도 없음·cache·회복·Nest DI/HTTP/저장 전 실패를 검증했다. 운영 Google 네트워크의 실제 지연은 미측정이며 API 인스턴스별·제공자별 동시 검증 상한 기본10개와5분 집계 지표를 추가했다. fleet 전체 동시성·circuit breaker는 후속 과제다.
 
 Apple의 JWKS client는 provider instance에 유지되고5초 네트워크 제한을 설정한다. 캐시 때문에 인증마다 JWKS를 다시 받는다고 판단하지 않았다. 실제 제공자 계정/네트워크에 대한 부하 시험은 하지 않았다.
 
@@ -77,10 +77,10 @@ Apple의 JWKS client는 provider instance에 유지되고5초 네트워크 제�
 
 ## 권장 후속 작업 순서
 
-1. 정리 주기/즉시 실행/bounded 반복은 개선 완료. 실제 backlog 지표와 실패/상한 도달 경보를 추가 검토.
+1. 정리 주기/즉시 실행/bounded 반복은 개선 완료. 정리 실패/상한 도달 streak와 처리 건수·시간 집계를 추가했다. 실제 backlog count 및 운영 경보 수집은 후속 검토.
 2. 세션 만료·연동 owner FK 인덱스와 테스트 DB EXPLAIN은 완료. 운영 migration 적용 계획 필요.
 3. 프록시 mapped 전체범위 설정 거부는 완료. 실제 운영 프록시 허용 목록/헤더 처리 확인 필요.
-4. Google timeout/오류 분류는 완료. 전체 제공자 동시 대기 상한과 circuit breaker는 후속 검토.
+4. Google timeout/오류 분류는 완료. 인스턴스별 제공자 동시 상한과 운영 집계는 추가 완료. fleet 제한/circuit breaker와 실제 경보 적용은 후속 검토.
 5. 세션/토큰 누적 지표와 갱신 남용 정책, 실제 공용IP/프록시 테스트.
 
 점검만으로 위 변경의 사용자 정책을 확정하지 않는다. 구현 시 기능별 Task로 분리하고 [서비스 정책](service-policy.md)을 함께 갱신한다.

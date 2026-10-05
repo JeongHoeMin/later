@@ -8,7 +8,7 @@ AuthModule의 AuthCleanupScheduler는 API 시작 시 즉시 실행하고 이후5
 
 유효한 세션은 폐기 여부와 관계없이 보존하며 사용 완료 Refresh Token도 세션 만료까지 유지해 재사용 탐지를 보호한다. User와 SocialAccount는 정리 대상이 아니다.
 
-성공 로그는 이벤트·삭제 건수·`batches`·`limitReached`를 기록한다. `limitReached`는 예산/배치 상한으로 반복을 멈췄다는 뜻이며 추가 행 존재를 확정하지 않는다. 실패 로그는 원문 없이 이벤트만 기록하고 다음5분 주기에 재시도한다. 운영에서는 연속 상한 도달·실패와 실제 만료 backlog를 함께 관측해야 한다. 별도 backlog count/경보는 아직 없다.
+성공 로그는 이벤트·삭제 건수·`batches`·`limitReached`를 기록한다. `limitReached`는 예산/배치 상한으로 반복을 멈췄다는 뜻이며 추가 행 존재를 확정하지 않는다. 실패 로그는 원문 없이 이벤트만 기록하고 다음5분 주기에 재시도한다. 운영에서는 연속 상한 도달·실패와 실제 만료 backlog를 함께 관측해야 한다. AuthOperationsMetrics가5분마다 정리 runs/failures/삭제 건수/배치 수/시간·연속 실패·연속 상한 도달을 집계 로그로 기록한다. 성공 실행의 삭제 건수만 집계하므로 실패 전 커밋된 배치의 삭제 건수는 해당 집계에 포함되지 않는다. 별도 backlog count/실제 경보 수집은 아직 없다.
 
 AuthSession(expiresAt,id) 인덱스가 정리의 필터/정렬을 지원한다. Apple/Naver(ownerUserId) 인덱스는 탈퇴 시 연동 시도 FK 조회를 지원한다. 추가 migration의 일반 CREATE INDEX는 생성 중 쓰기를 막을 수 있어 운영 적용 시 별도 작업 계획이 필요하다.
 

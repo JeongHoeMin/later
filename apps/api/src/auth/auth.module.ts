@@ -1,3 +1,10 @@
+import { AuthOperationsMetrics } from './infrastructure/operations/auth-operations.metrics.js';
+import type { SocialAuthProvider } from './application/ports/social-auth-provider.js';
+import {
+  ProviderConcurrencyGate,
+  LimitedSocialAuthProvider,
+  readProviderConcurrency,
+} from './infrastructure/operations/provider-concurrency-gate.js';
 import { AuthRateLimitModule } from './auth-rate-limit.module.js';
 import {
   AUTH_CLEANUP_REPOSITORY,
@@ -71,6 +78,7 @@ import { SessionController } from './presentation/http/session.controller.js';
 import { AuthenticatedUserController } from './presentation/http/authenticated-user.controller.js';
 
 const GOOGLE_CLIENT_ID = Symbol('GoogleClientId');
+const SOCIAL_AUTH_PROVIDERS = Symbol('LimitedSocialAuthProviders');
 
 @Module({
   imports: [
@@ -91,6 +99,39 @@ const GOOGLE_CLIENT_ID = Symbol('GoogleClientId');
   ],
   providers: [
     {
+      provide: AuthOperationsMetrics,
+      useFactory: () => new AuthOperationsMetrics(),
+    },
+    {
+      provide: ProviderConcurrencyGate,
+      inject: [AuthOperationsMetrics],
+      useFactory: (metrics: AuthOperationsMetrics) =>
+        new ProviderConcurrencyGate(
+          readProviderConcurrency(process.env.AUTH_PROVIDER_MAX_CONCURRENCY),
+          metrics,
+        ),
+    },
+    {
+      provide: SOCIAL_AUTH_PROVIDERS,
+      inject: [
+        GoogleAuthProvider,
+        KakaoAuthProvider,
+        NaverAuthProvider,
+        AppleAuthProvider,
+        ProviderConcurrencyGate,
+      ],
+      useFactory: (
+        google: GoogleAuthProvider,
+        kakao: KakaoAuthProvider,
+        naver: NaverAuthProvider,
+        apple: AppleAuthProvider,
+        gate: ProviderConcurrencyGate,
+      ) =>
+        [google, kakao, naver, apple].map(
+          (provider) => new LimitedSocialAuthProvider(provider, gate),
+        ),
+    },
+    {
       provide: AUTH_CLEANUP_REPOSITORY,
       inject: [PrismaClient],
       useFactory: (client: PrismaClient) =>
@@ -104,33 +145,20 @@ const GOOGLE_CLIENT_ID = Symbol('GoogleClientId');
     },
     {
       provide: AuthCleanupScheduler,
-      inject: [CleanupExpiredAuthUseCase],
-      useFactory: (cleanup: CleanupExpiredAuthUseCase) =>
-        new AuthCleanupScheduler(cleanup),
+      inject: [CleanupExpiredAuthUseCase, AuthOperationsMetrics],
+      useFactory: (
+        cleanup: CleanupExpiredAuthUseCase,
+        metrics: AuthOperationsMetrics,
+      ) => new AuthCleanupScheduler(cleanup, undefined, metrics),
     },
     {
       provide: LinkSocialAccountUseCase,
-      inject: [
-        GoogleAuthProvider,
-        KakaoAuthProvider,
-        NaverAuthProvider,
-        AppleAuthProvider,
-        USER_ACCOUNT_REPOSITORY,
-        NaverLoginFlow,
-      ],
+      inject: [SOCIAL_AUTH_PROVIDERS, USER_ACCOUNT_REPOSITORY, NaverLoginFlow],
       useFactory: (
-        google: GoogleAuthProvider,
-        kakao: KakaoAuthProvider,
-        naver: NaverAuthProvider,
-        apple: AppleAuthProvider,
+        providers: SocialAuthProvider[],
         users: UserAccountRepository,
         flow: NaverLoginFlow,
-      ) =>
-        new LinkSocialAccountUseCase(
-          [google, kakao, naver, apple],
-          users,
-          flow,
-        ),
+      ) => new LinkSocialAccountUseCase(providers, users, flow),
     },
     {
       provide: NAVER_LOGIN_ATTEMPTS,
@@ -248,20 +276,11 @@ const GOOGLE_CLIENT_ID = Symbol('GoogleClientId');
     },
     {
       provide: SocialLoginUseCase,
-      inject: [
-        GoogleAuthProvider,
-        KakaoAuthProvider,
-        NaverAuthProvider,
-        AppleAuthProvider,
-        FindOrCreateSocialUserUseCase,
-      ],
+      inject: [SOCIAL_AUTH_PROVIDERS, FindOrCreateSocialUserUseCase],
       useFactory: (
-        google: GoogleAuthProvider,
-        kakao: KakaoAuthProvider,
-        naver: NaverAuthProvider,
-        apple: AppleAuthProvider,
+        providers: SocialAuthProvider[],
         users: FindOrCreateSocialUserUseCase,
-      ) => new SocialLoginUseCase([google, kakao, naver, apple], users),
+      ) => new SocialLoginUseCase(providers, users),
     },
     {
       provide: NaverAuthProvider,
