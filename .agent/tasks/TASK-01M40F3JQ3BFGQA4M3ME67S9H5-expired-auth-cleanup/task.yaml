@@ -1,0 +1,10 @@
+id: TASK-01M40F3JQ3BFGQA4M3ME67S9H5
+title: 만료 인증 데이터 자동 정리
+status: completed
+phase: completed
+priority: normal
+created_at: 2026-10-03T17:46:48+09:00
+updated_at: 2026-10-03T17:58:00+09:00
+current_summary: 만료 인증 데이터 주기 정리 구현, 전체 API 검증 및 독립 리뷰 완료.
+next_action: null
+blocked_by: null

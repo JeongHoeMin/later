@@ -23,21 +23,42 @@ enum SocialProvider {
 }
 
 model AppleLoginAttempt {
-  id        String    @id @db.Uuid
-  nonceHash String    @db.Char(64)
-  expiresAt DateTime
-  usedAt    DateTime?
-  createdAt DateTime  @default(now())
+  ownerUserId String?   @db.Uuid
+  owner       User?     @relation(fields: [ownerUserId], references: [id], onDelete: Cascade)
+  id          String    @id @db.Uuid
+  nonceHash   String    @db.Char(64)
+  expiresAt   DateTime
+  usedAt      DateTime?
+  createdAt   DateTime  @default(now())
 
   @@index([expiresAt])
+  @@index([ownerUserId])
+}
+
+model NaverLoginAttempt {
+  ownerUserId String?   @db.Uuid
+  owner       User?     @relation(fields: [ownerUserId], references: [id], onDelete: Cascade)
+  id          String    @id @db.Uuid
+  stateHash   String    @unique @db.Char(64)
+  secretHash  String    @db.Char(64)
+  expiresAt   DateTime
+  sealedGrant String?
+  callbackAt  DateTime?
+  usedAt      DateTime?
+  createdAt   DateTime  @default(now())
+
+  @@index([expiresAt])
+  @@index([ownerUserId])
 }
 
 model User {
-  id             String          @id @default(uuid()) @db.Uuid
-  createdAt      DateTime        @default(now())
-  updatedAt      DateTime        @updatedAt
-  socialAccounts SocialAccount[]
-  authSessions   AuthSession[]
+  id                String              @id @default(uuid()) @db.Uuid
+  createdAt         DateTime            @default(now())
+  updatedAt         DateTime            @updatedAt
+  socialAccounts    SocialAccount[]
+  authSessions      AuthSession[]
+  appleLinkAttempts AppleLoginAttempt[]
+  naverLinkAttempts NaverLoginAttempt[]
 }
 
 model AuthSession {
@@ -50,6 +71,7 @@ model AuthSession {
   refreshTokens RefreshToken[]
 
   @@index([userId])
+  @@index([expiresAt, id])
 }
 
 model RefreshToken {
@@ -73,5 +95,14 @@ model SocialAccount {
   user User @relation(fields: [userId], references: [id], onDelete: Cascade)
 
   @@unique([provider, subject])
+  @@unique([userId, provider])
   @@index([userId])
+}
+
+model AuthRateLimitBucket {
+  key       String   @id @db.Char(64)
+  hits      Int
+  expiresAt DateTime
+
+  @@index([expiresAt])
 }

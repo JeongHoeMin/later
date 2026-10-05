@@ -1,3 +1,5 @@
+import { AUTH_RATE_LIMIT_REPOSITORY } from '@auth/application/ports/auth-rate-limit.repository.js';
+import { TestAuthRateLimitRepository } from './helpers/test-auth-rate-limit.repository.js';
 import {
   BadRequestException,
   Body,
@@ -60,6 +62,8 @@ class LoggingTestController {
   }
 }
 
+const rateLimits = new TestAuthRateLimitRepository();
+
 describe('전역 Controller 로깅', () => {
   let app: INestApplication<App>;
   let log: ReturnType<typeof vi.spyOn>,
@@ -79,6 +83,8 @@ describe('전역 Controller 로깅', () => {
       imports: [AppModule],
       controllers: [LoggingTestController],
     })
+      .overrideProvider(AUTH_RATE_LIMIT_REPOSITORY)
+      .useValue(rateLimits)
       .overrideProvider(PrismaClient)
       .useValue({ $connect: async () => {}, $disconnect: async () => {} })
       .compile();
@@ -90,6 +96,7 @@ describe('전역 Controller 로깅', () => {
     error = vi.spyOn(Logger.prototype, 'error').mockImplementation(() => {});
   });
   beforeEach(() => {
+    rateLimits.buckets.clear();
     log.mockClear();
     warn.mockClear();
     error.mockClear();

@@ -4,6 +4,7 @@ import { Test, type TestingModule } from '@nestjs/testing';
 import { describe, it, expect, vi } from 'vitest';
 import { PrismaClient } from '@db/client.js';
 import { AuthModule } from './auth.module.js';
+import { AuthCleanupScheduler } from './infrastructure/cleanup/auth-cleanup.scheduler.js';
 import { GoogleAuthProvider } from './infrastructure/google/google-auth-provider.js';
 import { SocialSignInUseCase } from './application/social-sign-in.use-case.js';
 import { RefreshSessionUseCase } from './application/refresh-session.use-case.js';
@@ -31,17 +32,34 @@ describe('AuthModule integration', () => {
       'test-only-access-secret-with-at-least-32-bytes',
     );
     const subject = randomUUID();
+    const preservedAttemptId = randomUUID();
     let module: TestingModule | undefined;
     let prisma: PrismaClient | undefined;
     try {
       module = await Test.createTestingModule({ imports: [AuthModule] })
+        // Background cleanup is covered separately and must not delete other test owners' rows.
+        .overrideProvider(AuthCleanupScheduler)
+        .useValue({})
         .overrideProvider(GoogleAuthProvider)
         .useValue({
           provider: 'google',
           authenticate: async () => ({ subject }),
         })
         .compile();
+      prisma = module.get<PrismaClient>(PrismaClient);
+      await prisma.appleLoginAttempt.create({
+        data: {
+          id: preservedAttemptId,
+          nonceHash: 'p'.repeat(64),
+          expiresAt: new Date(0),
+        },
+      });
       await module.init();
+      expect(
+        await prisma.appleLoginAttempt.findUnique({
+          where: { id: preservedAttemptId },
+        }),
+      ).not.toBeNull();
       prisma = module.get<PrismaClient>(PrismaClient);
       const login = module.get(SocialSignInUseCase);
       const first = await login.execute({
@@ -92,6 +110,9 @@ describe('AuthModule integration', () => {
       );
     } finally {
       try {
+        await prisma?.appleLoginAttempt.deleteMany({
+          where: { id: preservedAttemptId },
+        });
         await prisma?.user.deleteMany({
           where: { socialAccounts: { some: { provider: 'google', subject } } },
         });

@@ -7,12 +7,24 @@ export class PrismaAppleLoginAttemptRepository implements AppleLoginAttemptRepos
     id: string;
     nonceHash: string;
     expiresAt: Date;
+    ownerUserId?: string;
   }): Promise<void> {
     await this.prisma.appleLoginAttempt.create({ data: attempt });
   }
-  async consume(id: string, nonceHash: string, now: Date): Promise<boolean> {
+  async consume(
+    id: string,
+    nonceHash: string,
+    now: Date,
+    ownerUserId?: string,
+  ): Promise<boolean> {
     const result = await this.prisma.appleLoginAttempt.updateMany({
-      where: { id, nonceHash, expiresAt: { gt: now }, usedAt: null },
+      where: {
+        id,
+        nonceHash,
+        ownerUserId: ownerUserId ?? null,
+        expiresAt: { gt: now },
+        usedAt: null,
+      },
       data: { usedAt: now },
     });
     return result.count === 1;

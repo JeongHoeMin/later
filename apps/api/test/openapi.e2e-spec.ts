@@ -1,3 +1,5 @@
+import { AUTH_RATE_LIMIT_REPOSITORY } from '@auth/application/ports/auth-rate-limit.repository.js';
+import { TestAuthRateLimitRepository } from './helpers/test-auth-rate-limit.repository.js';
 import { Controller, Get, type INestApplication } from '@nestjs/common';
 import { Test } from '@nestjs/testing';
 import { afterAll, beforeAll, describe, expect, it, vi } from 'vitest';
@@ -33,6 +35,8 @@ describe('OpenAPI 조회 (e2e)', () => {
       imports: [AppModule],
       controllers: [DocumentationTestController],
     })
+      .overrideProvider(AUTH_RATE_LIMIT_REPOSITORY)
+      .useValue(new TestAuthRateLimitRepository())
       .overrideProvider(PrismaClient)
       .useValue({ $connect: async () => {}, $disconnect: async () => {} })
       .compile();
@@ -62,6 +66,8 @@ describe('OpenAPI 조회 (e2e)', () => {
       '/',
       '/auth/social/login',
       '/auth/social/apple/start',
+      '/auth/social/naver/start',
+      '/auth/social/naver/callback',
       '/auth/token/refresh',
       '/auth/logout',
       '/documentation-test',
@@ -83,6 +89,57 @@ describe('OpenAPI 조회 (e2e)', () => {
       .expect('Content-Type', /html/);
     expect(response.text).toContain('swagger-ui');
   });
+  it('네이버 전용 API의 입력·리다이렉트·응답 계약을 제공한다', async () => {
+    const { body: document } = await request(app.getHttpServer())
+      .get('/docs-json')
+      .set('Connection', 'keep-alive')
+      .expect(200);
+    const start = document.paths['/auth/social/naver/start'].post;
+    expect(start.requestBody.required).toBe(false);
+    expect(start.responses['201']).toBeDefined();
+    expect(
+      document.components.schemas.NaverLoginStartResponseDto.required,
+    ).toEqual([
+      'loginAttemptId',
+      'attemptSecret',
+      'authorizationUrl',
+      'expiresIn',
+    ]);
+    const callback = document.paths['/auth/social/naver/callback'].get;
+    expect(
+      callback.parameters.find(
+        (value: { name: string }) => value.name === 'state',
+      ).required,
+    ).toBe(true);
+    expect(callback.responses['303'].headers.Location.schema.type).toBe(
+      'string',
+    );
+    expect(document.paths['/auth/social/naver/complete']).toBeUndefined();
+    const complete = document.paths['/auth/social/login'].post;
+    const schema = complete.requestBody.content[
+      'application/json'
+    ].schema.oneOf.find(
+      (value: { properties: { provider: { enum: string[] } } }) =>
+        value.properties.provider.enum[0] === 'naver',
+    );
+    expect(schema.required).toEqual([
+      'provider',
+      'loginAttemptId',
+      'attemptSecret',
+    ]);
+    expect(schema.additionalProperties).toBe(false);
+    expect(
+      complete.responses['200'].content['application/json'].schema.$ref,
+    ).toContain('SocialLoginResponseDto');
+    for (const operation of [start, callback, complete]) {
+      expect(operation.responses['400']).toBeDefined();
+      expect(operation.responses['503']).toBeDefined();
+      expect(operation.responses['500']).toBeDefined();
+      expect(operation.security ?? []).toEqual([]);
+    }
+    for (const operation of [callback, complete])
+      expect(operation.responses['401']).toBeDefined();
+  });
   it('제공자별 로그인 필수 필드와 추가 필드 금지 계약을 제공한다', async () => {
     const { body: document } = await request(app.getHttpServer())
       .get('/docs-json')
@@ -96,7 +153,7 @@ describe('OpenAPI 조회 (e2e)', () => {
     for (const [provider, extra] of [
       ['google', undefined],
       ['kakao', undefined],
-      ['naver', 'state'],
+      ['naver', 'loginAttemptId'],
       ['apple', 'loginAttemptId'],
     ]) {
       const model = models.find(
@@ -104,7 +161,11 @@ describe('OpenAPI 조회 (e2e)', () => {
           value.properties.provider.enum[0] === provider,
       );
       expect(model.required).toEqual(
-        extra ? ['provider', 'credential', extra] : ['provider', 'credential'],
+        provider === 'naver'
+          ? ['provider', 'loginAttemptId', 'attemptSecret']
+          : extra
+            ? ['provider', 'credential', extra]
+            : ['provider', 'credential'],
       );
       expect(model.additionalProperties).toBe(false);
       expect(Object.keys(model.properties)).toEqual(model.required);
@@ -204,9 +265,10 @@ describe('OpenAPI 조회 (e2e)', () => {
             true,
           );
       }
-      expect(new RegExp(model.properties.credential.pattern).test('   ')).toBe(
-        false,
-      );
+      if (model.properties.credential)
+        expect(
+          new RegExp(model.properties.credential.pattern).test('   '),
+        ).toBe(false);
       for (const required of model.required) {
         const invalid = { ...example.value };
         delete invalid[required];

@@ -25,4 +25,6 @@ node -e "console.log(require('node:crypto').randomBytes(32).toString('base64url'
 - 유효하지 않은 토큰: 401 / `INVALID_ACCESS_TOKEN`
 - 예상하지 못한 검증 시스템 오류: 공통 필터의 500 처리
 
-이 Guard는 토큰의 유효성을 검사한다. 회원 탈퇴 여부, 역할에 따른 권한, 로그인 세션 폐기 여부는 조회하지 않는다.
+이 Guard는 JWT 검증 후 DB의 회원 존재를 확인한다. 삭제된 회원은 401 / INVALID_ACCESS_TOKEN으로 거부하므로 탈퇴 전에 발급된 JWT도 사용할 수 없다. DB 조회 장애는 500이며 인증을 허용하지 않는다. AccessTokenModule은 회원 저장소와 DB 설정에 의존한다.
+
+역할·구독 권한과 로그인 세션 폐기 여부는 조회하지 않는다. 일반 로그아웃은 Refresh Token 세션을 폐기하며 기존 JWT는 최대 15분까지 유효하다.

@@ -231,4 +231,15 @@ describe('AppleAuthProvider', () => {
       'APPLE_CLIENT_IDS',
     );
   });
+  it('서명과 nonce를 검증한 뒤 연동 회원을 시도 소비에 전달한다', async () => {
+    await expect(
+      adapter.authenticate(await token(), attemptId, 'member'),
+    ).resolves.toEqual({ subject: 'apple-user' });
+    expect(attempts.consume).toHaveBeenCalledExactlyOnceWith(
+      attemptId,
+      createHash('sha256').update(nonce).digest('hex'),
+      now,
+      'member',
+    );
+  });
 });

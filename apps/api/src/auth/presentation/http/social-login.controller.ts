@@ -1,6 +1,11 @@
+import { AuthRateLimit } from './auth-rate-limit.js';
+import { AuthIpRateLimitGuard } from './auth-rate-limit.guard.js';
+import { NaverLoginFlow } from '@auth/application/naver-login-flow.js';
 import {
   Body,
+  UseGuards,
   Controller,
+  Header,
   HttpCode,
   HttpStatus,
   Inject,
@@ -28,19 +33,23 @@ import {
 export type SocialLoginResponse = SocialSignInResult;
 
 @Controller('auth/social')
+@UseGuards(AuthIpRateLimitGuard)
+@AuthRateLimit('login')
 @ApiTags('인증')
 export class SocialLoginController {
   constructor(
     @Inject(SocialSignInUseCase)
     private readonly loginUseCase: SocialSignInUseCase,
+    @Inject(NaverLoginFlow) private readonly naverFlow: NaverLoginFlow,
   ) {}
 
   @Post('login')
   @HttpCode(HttpStatus.OK)
+  @Header('Cache-Control', 'no-store')
   @ApiOperation({
     summary: '소셜 인증 후 회원 연결과 서비스 로그인',
     description:
-      'Google ID token, Kakao access token, Naver code/state 또는 Apple ID token/loginAttemptId를 검증한다. Apple 시도는 회원·세션 저장 전에 소비되므로 이후 오류·응답 유실 시 새 시도로 시작한다.',
+      'Google ID token, Kakao access token 또는 Apple ID token/loginAttemptId를 검증한다. 네이버는 start/callback 이후 시도 ID와 비밀값으로 이 경로에서 완료한다. 네이버·Apple 시도는 회원·세션 저장 전에 소비되므로 이후 오류·응답 유실 시 새 시도로 시작한다.',
     security: [],
   })
   @ApiBody({
@@ -52,8 +61,8 @@ export class SocialLoginController {
       naver: {
         value: {
           provider: 'naver',
-          credential: 'NAVER_AUTHORIZATION_CODE',
-          state: 'CLIENT_VALIDATED_STATE',
+          loginAttemptId: 'a43a185e-b819-44d7-90ca-e11d218c3145',
+          attemptSecret: 'x'.repeat(43),
         },
       },
       apple: {
@@ -70,13 +79,18 @@ export class SocialLoginController {
     description: '신규·기존 회원 모두 동일한 서비스 로그인 응답',
   })
   @ApiAuthErrors(
-    'SOCIAL_AUTHENTICATION_FAILED: 잘못된·만료된 인증 정보 또는 Apple 시도 불일치·재사용',
+    'SOCIAL_AUTHENTICATION_FAILED: 잘못된·만료된 인증 정보 또는 네이버·Apple 시도 불일치·재사용',
     true,
   )
   async login(
     @Body(SocialLoginRequestPipe) request: SocialLoginRequest,
   ): Promise<SocialLoginResponse> {
     try {
+      if (request.provider === 'naver')
+        return await this.naverFlow.complete(
+          request.loginAttemptId,
+          request.attemptSecret,
+        );
       return await this.loginUseCase.execute(request);
     } catch (error: unknown) {
       if (error instanceof SocialAuthenticationUnavailableError) {

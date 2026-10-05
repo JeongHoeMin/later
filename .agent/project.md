@@ -6,6 +6,14 @@ pnpm workspace: `apps/api`는 NestJS/TypeScript API, `apps/mobile`은 Expo/React
 버전은 각 package.json과 pnpm-lock.yaml에서 확인한다. 루트에서 `pnpm install --frozen-lockfile`로 설치하며 패키지 관리자를 섞지 않는다.
 모바일 변경은 [모바일 지침](../apps/mobile/AGENTS.md)을 추가로 읽는다. Expo 패키지는 해당 SDK에 맞는 `expo install`을 사용한다.
 
+## 서비스 정책
+
+[docs/service-policy.md](../docs/service-policy.md)는 현재 구현된 서비스 정책의 단일 기준 문서다. 서비스 정책이 포함된 기능 구현·수정 시 반드시 관련 항목을 읽고 **이 파일을 함께 갱신**한다. 새 도메인 정책도 같은 파일에 항목을 추가한다. 수치·적용 조건·예외·미지원·운영 적용 상태를 실제 코드와 대조하고 Task 검증에 남긴다. 완료 기준과 자세한 절차는 [공통 Workflow](AGENTS.md#서비스-정책-문서-갱신)를 따른다.
+
+## 서비스 구성
+
+[docs/service-architecture.md](../docs/service-architecture.md)는 현재 서비스 구성의 기준 문서다. 구성 변경 작업을 시작할 때 관련 항목을 읽고, API 모듈·외부 의존성·저장소 역할·데이터 흐름·배포/네트워크·백그라운드 작업·관측이 변경되면 **항상 구현과 함께 같은 파일을 갱신**한다. 구성도와 설명을 실제 코드/설정에 대조하고 계획·로컬 구성·운영 적용 미확인을 구분한다. Task에 영향·갱신·검증 결과를 남긴다. [공통 Workflow](AGENTS.md#서비스-구성-문서-갱신)를 따른다.
+
 ## API 설계
 
 - 목표: 구글·카카오·네이버·애플 소셜 계정으로 간편 회원가입과 로그인. 자체 비밀번호 회원가입은 없다. 현재 구현 상태는 해당 브랜치의 Task 문서에서 확인한다. 목표를 구현 완료로 간주하지 않는다.
@@ -28,6 +36,8 @@ pnpm workspace: `apps/api`는 NestJS/TypeScript API, `apps/mobile`은 Expo/React
 - 비동기 반환 계약은 `Promise<...>`에 맞춘다. catch에서 rejection을 처리해야 하면 `return await`가 필요할 수 있다. `unknown` 오류를 확인하고 변환한다.
 
 ## DB와 환경
+
+Redis는 인증 요청 제한 전용 공유 저장소다. REDIS_URL은 필수이며 로컬 실행/운영/테스트는 [Redis 안내](../docs/redis.md)를 따른다. Redis integration은 localhost 논리 DB15에서 테스트 소유 키만 정리하고 FLUSHDB/FLUSHALL은 금지한다. 회원/세션 데이터는 PostgreSQL에 유지한다.
 
 PostgreSQL/Prisma. API `.env`는 개발 DB `later_dev`, `.env.test`는 테스트 DB `later_test`를 사용한다. 파일과 인증 정보는 커밋하지 않는다.
 실제 URL을 출력하지 않고 URL pathname으로 대상 DB를 확인한다. 테스트 정리·삭제는 `later_test`에서만 실행하고 테스트 소유 데이터만 정리한다.

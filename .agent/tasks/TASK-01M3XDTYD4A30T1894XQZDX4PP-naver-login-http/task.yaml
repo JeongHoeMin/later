@@ -1,0 +1,10 @@
+id: TASK-01M3XDTYD4A30T1894XQZDX4PP
+title: 네이버 로그인 시작·콜백·완료 HTTP와 우회 차단
+status: completed
+phase: completed
+priority: normal
+created_at: 2026-10-02T13:26:53.732+09:00
+updated_at: 2026-10-02T13:49:10.729+09:00
+current_summary: 네이버 HTTP 세 경로와 직접 제출 차단, Swagger 및 전체 API 검증 완료.
+next_action: null
+blocked_by: null

@@ -40,4 +40,18 @@ describe('StartAppleLoginUseCase', () => {
     );
     await expect(useCase.execute()).rejects.toBe(unavailable);
   });
+  it('연동 시작은 시도를 현재 회원에 묶는다', async () => {
+    const attempts = {
+      create: vi.fn().mockResolvedValue(undefined),
+      consume: vi.fn(),
+    };
+    const start = new StartAppleLoginUseCase(
+      attempts,
+      new SecureAppleLoginAttemptGenerator(),
+    );
+    await start.execute('member');
+    expect(attempts.create.mock.calls[0][0]).toMatchObject({
+      ownerUserId: 'member',
+    });
+  });
 });

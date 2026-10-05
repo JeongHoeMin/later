@@ -10,7 +10,7 @@ export class StartAppleLoginUseCase {
     private readonly now: () => Date = () => new Date(),
   ) {}
 
-  async execute(): Promise<{
+  async execute(ownerUserId?: string): Promise<{
     loginAttemptId: string;
     nonce: string;
     expiresIn: number;
@@ -19,6 +19,7 @@ export class StartAppleLoginUseCase {
     await this.attempts.create({
       id: attempt.id,
       nonceHash: attempt.nonceHash,
+      ...(ownerUserId === undefined ? {} : { ownerUserId }),
       expiresAt: new Date(this.now().getTime() + 300_000),
     });
     return { loginAttemptId: attempt.id, nonce: attempt.nonce, expiresIn: 300 };

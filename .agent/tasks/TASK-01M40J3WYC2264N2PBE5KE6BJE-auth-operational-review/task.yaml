@@ -1,0 +1,10 @@
+id: TASK-01M40J3WYC2264N2PBE5KE6BJE
+title: 인증 운영 위험과 비용 점검
+status: completed
+phase: completed
+priority: normal
+created_at: 2026-10-03T18:39:24+09:00
+updated_at: 2026-10-03T19:03:31+09:00
+current_summary: auth 운영 위험 점검과 근거 문서를 완료했다. Redis 외 개선은 후속 승인 대상으로 남겼다.
+next_action: null
+blocked_by: null

@@ -1,3 +1,5 @@
+import { PrismaClient } from '@db/client.js';
+import { USER_ACCOUNT_REPOSITORY } from '@users/application/ports/user-account.repository.js';
 import {
   Controller,
   Get,
@@ -56,7 +58,12 @@ describe('AccessTokenGuard (e2e)', () => {
           useFactory: (host: HttpAdapterHost) => new ApiExceptionFilter(host),
         },
       ],
-    }).compile();
+    })
+      .overrideProvider(PrismaClient)
+      .useValue({ $connect: async () => {}, $disconnect: async () => {} })
+      .overrideProvider(USER_ACCOUNT_REPOSITORY)
+      .useValue({ exists: async () => true })
+      .compile();
     app = module.createNestApplication();
     await app.init();
     issuer = module.get<AccessTokenIssuer>(ACCESS_TOKEN_ISSUER);
@@ -159,6 +166,10 @@ describe('AccessTokenGuard 시스템 오류 (e2e)', () => {
           },
         ],
       })
+        .overrideProvider(PrismaClient)
+        .useValue({ $connect: async () => {}, $disconnect: async () => {} })
+        .overrideProvider(USER_ACCOUNT_REPOSITORY)
+        .useValue({ exists: async () => true })
         .overrideProvider(ACCESS_TOKEN_VERIFIER)
         .useValue({
           verify: vi.fn().mockRejectedValue(new Error('private error')),

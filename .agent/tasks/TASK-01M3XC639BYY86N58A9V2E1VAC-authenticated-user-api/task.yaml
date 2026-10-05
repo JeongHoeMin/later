@@ -1,0 +1,10 @@
+id: TASK-01M3XC639BYY86N58A9V2E1VAC
+title: 로그인 회원 확인 API와 서비스 인증 연동
+status: completed
+phase: completed
+priority: normal
+created_at: 2026-10-02T12:58:02.027+09:00
+updated_at: 2026-10-02T13:03:30.918+09:00
+current_summary: GET auth/me와 기존 로그인·갱신 토큰 연결 및 서버 전체검증 완료.
+next_action: null
+blocked_by: null

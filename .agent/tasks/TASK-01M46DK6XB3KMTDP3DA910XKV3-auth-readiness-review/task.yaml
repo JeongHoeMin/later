@@ -1,0 +1,10 @@
+id: TASK-01M46DK6XB3KMTDP3DA910XKV3
+title: Auth 기획 충족과 실제 연동 준비 상태 점검
+status: completed
+phase: completed
+priority: normal
+created_at: 2026-10-06T01:15:50+09:00
+updated_at: 2026-10-06T01:17:09+09:00
+current_summary: 기획/코드 점검과489개 재검증 완료. 실제 계정 연동은 미검증으로 기록.
+next_action: null
+blocked_by: null

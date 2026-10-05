@@ -1,8 +1,41 @@
+import { AuthOperationsMetrics } from './infrastructure/operations/auth-operations.metrics.js';
+import type { SocialAuthProvider } from './application/ports/social-auth-provider.js';
+import {
+  ProviderConcurrencyGate,
+  LimitedSocialAuthProvider,
+  readProviderConcurrency,
+} from './infrastructure/operations/provider-concurrency-gate.js';
+import { AuthRateLimitModule } from './auth-rate-limit.module.js';
+import {
+  AUTH_CLEANUP_REPOSITORY,
+  type AuthCleanupRepository,
+} from './application/ports/auth-cleanup.repository.js';
+import { CleanupExpiredAuthUseCase } from './application/cleanup-expired-auth.use-case.js';
+import { AuthCleanupScheduler } from './infrastructure/cleanup/auth-cleanup.scheduler.js';
+import { PrismaAuthCleanupRepository } from './infrastructure/persistence/prisma-auth-cleanup.repository.js';
+import { SocialAccountLinkController } from './presentation/http/social-account-link.controller.js';
+import { LinkSocialAccountUseCase } from './application/link-social-account.use-case.js';
+import {
+  USER_ACCOUNT_REPOSITORY,
+  type UserAccountRepository,
+} from '@users/application/ports/user-account.repository.js';
+import { UserAccountModule } from '@users/user-account.module.js';
+import { UserAccountController } from '@users/presentation/http/user-account.controller.js';
+import { NaverLoginFlow } from './application/naver-login-flow.js';
+import {
+  NAVER_LOGIN_ATTEMPTS,
+  type NaverLoginAttemptRepository,
+} from './application/ports/naver-login-attempt.repository.js';
+import { PrismaNaverLoginAttemptRepository } from './infrastructure/persistence/prisma-naver-login-attempt.repository.js';
+import { SecureNaverLogin } from './infrastructure/naver/naver-login-security.js';
+import { readNaverLoginSettings } from './infrastructure/naver/naver-login-settings.js';
+import { NaverLoginController } from './presentation/http/naver-login.controller.js';
 import { Module } from '@nestjs/common';
 import { OAuth2Client } from 'google-auth-library';
 import { UsersModule } from '@users/users.module.js';
 import { FindOrCreateSocialUserUseCase } from '@users/application/find-or-create-social-user.use-case.js';
 import { SocialLoginUseCase } from '@auth/application/social-login.use-case.js';
+import { createGoogleOAuthClient } from './infrastructure/google/google-oauth-client.js';
 import { GoogleAuthProvider } from '@auth/infrastructure/google/google-auth-provider.js';
 import { KakaoAuthProvider } from '@auth/infrastructure/kakao/kakao-auth-provider.js';
 import { NaverAuthProvider } from '@auth/infrastructure/naver/naver-auth-provider.js';
@@ -42,13 +75,111 @@ import {
 import { RefreshSessionUseCase } from './application/refresh-session.use-case.js';
 import { LogoutSessionUseCase } from './application/logout-session.use-case.js';
 import { SessionController } from './presentation/http/session.controller.js';
+import { AuthenticatedUserController } from './presentation/http/authenticated-user.controller.js';
 
 const GOOGLE_CLIENT_ID = Symbol('GoogleClientId');
+const SOCIAL_AUTH_PROVIDERS = Symbol('LimitedSocialAuthProviders');
 
 @Module({
-  imports: [UsersModule, PrismaModule, AccessTokenModule],
-  controllers: [SocialLoginController, SessionController, AppleLoginController],
+  imports: [
+    UsersModule,
+    PrismaModule,
+    AccessTokenModule,
+    UserAccountModule,
+    AuthRateLimitModule,
+  ],
+  controllers: [
+    SocialAccountLinkController,
+    UserAccountController,
+    NaverLoginController,
+    SocialLoginController,
+    SessionController,
+    AppleLoginController,
+    AuthenticatedUserController,
+  ],
   providers: [
+    {
+      provide: AuthOperationsMetrics,
+      useFactory: () => new AuthOperationsMetrics(),
+    },
+    {
+      provide: ProviderConcurrencyGate,
+      inject: [AuthOperationsMetrics],
+      useFactory: (metrics: AuthOperationsMetrics) =>
+        new ProviderConcurrencyGate(
+          readProviderConcurrency(process.env.AUTH_PROVIDER_MAX_CONCURRENCY),
+          metrics,
+        ),
+    },
+    {
+      provide: SOCIAL_AUTH_PROVIDERS,
+      inject: [
+        GoogleAuthProvider,
+        KakaoAuthProvider,
+        NaverAuthProvider,
+        AppleAuthProvider,
+        ProviderConcurrencyGate,
+      ],
+      useFactory: (
+        google: GoogleAuthProvider,
+        kakao: KakaoAuthProvider,
+        naver: NaverAuthProvider,
+        apple: AppleAuthProvider,
+        gate: ProviderConcurrencyGate,
+      ) =>
+        [google, kakao, naver, apple].map(
+          (provider) => new LimitedSocialAuthProvider(provider, gate),
+        ),
+    },
+    {
+      provide: AUTH_CLEANUP_REPOSITORY,
+      inject: [PrismaClient],
+      useFactory: (client: PrismaClient) =>
+        new PrismaAuthCleanupRepository(client),
+    },
+    {
+      provide: CleanupExpiredAuthUseCase,
+      inject: [AUTH_CLEANUP_REPOSITORY],
+      useFactory: (repository: AuthCleanupRepository) =>
+        new CleanupExpiredAuthUseCase(repository),
+    },
+    {
+      provide: AuthCleanupScheduler,
+      inject: [CleanupExpiredAuthUseCase, AuthOperationsMetrics],
+      useFactory: (
+        cleanup: CleanupExpiredAuthUseCase,
+        metrics: AuthOperationsMetrics,
+      ) => new AuthCleanupScheduler(cleanup, undefined, metrics),
+    },
+    {
+      provide: LinkSocialAccountUseCase,
+      inject: [SOCIAL_AUTH_PROVIDERS, USER_ACCOUNT_REPOSITORY, NaverLoginFlow],
+      useFactory: (
+        providers: SocialAuthProvider[],
+        users: UserAccountRepository,
+        flow: NaverLoginFlow,
+      ) => new LinkSocialAccountUseCase(providers, users, flow),
+    },
+    {
+      provide: NAVER_LOGIN_ATTEMPTS,
+      inject: [PrismaClient],
+      useFactory: (client: PrismaClient) =>
+        new PrismaNaverLoginAttemptRepository(client),
+    },
+    {
+      provide: NaverLoginFlow,
+      inject: [NAVER_LOGIN_ATTEMPTS, SocialSignInUseCase],
+      useFactory: (
+        attempts: NaverLoginAttemptRepository,
+        signIn: SocialSignInUseCase,
+      ) =>
+        new NaverLoginFlow(
+          attempts,
+          new SecureNaverLogin(() => process.env.NAVER_LOGIN_BRIDGE_KEY ?? ''),
+          signIn,
+          readNaverLoginSettings,
+        ),
+    },
     {
       provide: APPLE_LOGIN_ATTEMPT_REPOSITORY,
       inject: [PrismaClient],
@@ -132,7 +263,7 @@ const GOOGLE_CLIENT_ID = Symbol('GoogleClientId');
         return clientId;
       },
     },
-    { provide: OAuth2Client, useFactory: () => new OAuth2Client() },
+    { provide: OAuth2Client, useFactory: createGoogleOAuthClient },
     {
       provide: GoogleAuthProvider,
       inject: [GOOGLE_CLIENT_ID, OAuth2Client],
@@ -145,20 +276,11 @@ const GOOGLE_CLIENT_ID = Symbol('GoogleClientId');
     },
     {
       provide: SocialLoginUseCase,
-      inject: [
-        GoogleAuthProvider,
-        KakaoAuthProvider,
-        NaverAuthProvider,
-        AppleAuthProvider,
-        FindOrCreateSocialUserUseCase,
-      ],
+      inject: [SOCIAL_AUTH_PROVIDERS, FindOrCreateSocialUserUseCase],
       useFactory: (
-        google: GoogleAuthProvider,
-        kakao: KakaoAuthProvider,
-        naver: NaverAuthProvider,
-        apple: AppleAuthProvider,
+        providers: SocialAuthProvider[],
         users: FindOrCreateSocialUserUseCase,
-      ) => new SocialLoginUseCase([google, kakao, naver, apple], users),
+      ) => new SocialLoginUseCase(providers, users),
     },
     {
       provide: NaverAuthProvider,

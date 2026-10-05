@@ -1,3 +1,5 @@
+import { AUTH_RATE_LIMIT_REPOSITORY } from '@auth/application/ports/auth-rate-limit.repository.js';
+import { TestAuthRateLimitRepository } from './helpers/test-auth-rate-limit.repository.js';
 import { Logger, type INestApplication } from '@nestjs/common';
 import { Test } from '@nestjs/testing';
 import request from 'supertest';
@@ -18,6 +20,8 @@ import { PrismaClient } from '@db/client.js';
 import { SOCIAL_USER_REPOSITORY } from '@users/application/ports/social-user.repository.js';
 import { AUTH_SESSION_REPOSITORY } from '@auth/application/ports/auth-session.repository.js';
 import { APPLE_LOGIN_ATTEMPT_REPOSITORY } from '@auth/application/ports/apple-login-attempt.repository.js';
+
+const rateLimits = new TestAuthRateLimitRepository();
 
 describe('Apple 소셜 로그인 (e2e)', () => {
   let app: INestApplication<App>;
@@ -71,6 +75,8 @@ describe('Apple 소셜 로그인 (e2e)', () => {
     vi.stubGlobal('fetch', http);
     log = vi.spyOn(Logger.prototype, 'error').mockImplementation(() => {});
     const module = await Test.createTestingModule({ imports: [AppModule] })
+      .overrideProvider(AUTH_RATE_LIMIT_REPOSITORY)
+      .useValue(rateLimits)
       .overrideProvider(PrismaClient)
       .useValue({ $connect: async () => {}, $disconnect: async () => {} })
       .overrideProvider(SOCIAL_USER_REPOSITORY)
@@ -84,6 +90,7 @@ describe('Apple 소셜 로그인 (e2e)', () => {
     await app.init();
   });
   beforeEach(() => {
+    rateLimits.buckets.clear();
     stored.clear();
     attempts.create.mockClear();
     attempts.consume.mockClear();

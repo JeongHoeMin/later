@@ -3,7 +3,7 @@ import { isAppleLoginAttemptId } from '@auth/domain/apple-login-attempt.js';
 
 export type SocialLoginRequest =
   | { provider: 'google' | 'kakao'; credential: string }
-  | { provider: 'naver'; credential: string; state: string }
+  | { provider: 'naver'; loginAttemptId: string; attemptSecret: string }
   | { provider: 'apple'; credential: string; loginAttemptId: string };
 
 export class SocialLoginRequestPipe implements PipeTransform<
@@ -16,11 +16,29 @@ export class SocialLoginRequestPipe implements PipeTransform<
     }
 
     const body = value as Record<string, unknown>;
+    if (body.provider === 'naver') {
+      if (
+        !isAppleLoginAttemptId(body.loginAttemptId) ||
+        typeof body.attemptSecret !== 'string' ||
+        !/^[A-Za-z0-9_-]{43}$/.test(body.attemptSecret) ||
+        Object.keys(body).some(
+          (key) =>
+            !['provider', 'loginAttemptId', 'attemptSecret'].includes(key),
+        )
+      )
+        throw new BadRequestException([
+          '네이버는 서버 발급 시도 ID와 비밀값만 제출해야 합니다.',
+        ]);
+      return {
+        provider: 'naver',
+        loginAttemptId: body.loginAttemptId as string,
+        attemptSecret: body.attemptSecret,
+      };
+    }
     const errors: string[] = [];
     if (
       body.provider !== 'google' &&
       body.provider !== 'kakao' &&
-      body.provider !== 'naver' &&
       body.provider !== 'apple'
     )
       errors.push('provider는 google, kakao, naver 또는 apple이어야 합니다.');
@@ -32,19 +50,10 @@ export class SocialLoginRequestPipe implements PipeTransform<
         (key) =>
           key !== 'provider' &&
           key !== 'credential' &&
-          !(body.provider === 'naver' && key === 'state') &&
           !(body.provider === 'apple' && key === 'loginAttemptId'),
       )
     ) {
       errors.push('허용하지 않은 필드가 포함되어 있습니다.');
-    }
-    if (
-      body.provider === 'naver' &&
-      (typeof body.state !== 'string' ||
-        !body.state.trim() ||
-        /\s/.test(body.state))
-    ) {
-      errors.push('네이버 state는 공백 없는 인증 요청의 문자열이어야 합니다.');
     }
     if (
       body.provider === 'apple' &&
@@ -60,12 +69,6 @@ export class SocialLoginRequestPipe implements PipeTransform<
         loginAttemptId: body.loginAttemptId as string,
       };
 
-    if (body.provider === 'naver')
-      return {
-        provider: 'naver',
-        credential: body.credential as string,
-        state: body.state as string,
-      };
     return {
       provider: body.provider as 'google' | 'kakao',
       credential: body.credential as string,
