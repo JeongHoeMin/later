@@ -19,6 +19,11 @@ const variants: Record<
     background: '#FEE500',
     text: 'rgba(0, 0, 0, 0.85)',
   },
+  naver: {
+    label: '네이버로 계속하기',
+    background: '#03C75A',
+    text: '#FFFFFF',
+  },
   apple: { label: 'Apple로 계속하기', background: '#FFFFFF', text: '#000000' },
   google: {
     label: 'Google로 계속하기',

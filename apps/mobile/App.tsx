@@ -1,18 +1,23 @@
-import { useState } from 'react';
 import { SafeAreaProvider } from 'react-native-safe-area-context';
 import { LoginScreen } from './src/features/auth/LoginScreen';
+import { SessionRestoreScreen } from './src/features/auth/SessionRestoreScreen';
+import { useAuthSession } from './src/features/auth/session/useAuthSession';
 import { SharePocScreen } from './src/features/share/SharePocScreen';
 
 export default function App() {
-  // TODO: 소셜 로그인 SDK·토큰 관리 연동 전까지 임시 상태로 화면 전환
-  const [isLoggedIn, setIsLoggedIn] = useState(false);
+  const { state, retryRestore, signedIn, signOut, withdraw } = useAuthSession();
 
   return (
     <SafeAreaProvider>
-      {isLoggedIn ? (
-        <SharePocScreen />
+      {state.status === 'signedIn' ? (
+        <SharePocScreen onLogout={signOut} onWithdraw={withdraw} />
+      ) : state.status === 'signedOut' ? (
+        <LoginScreen onAuthenticated={signedIn} />
       ) : (
-        <LoginScreen onLogin={() => setIsLoggedIn(true)} />
+        <SessionRestoreScreen
+          failed={state.status === 'restoreFailed'}
+          onRetry={retryRestore}
+        />
       )}
     </SafeAreaProvider>
   );

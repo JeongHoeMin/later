@@ -1,29 +1,31 @@
-import { StyleSheet, Text, View } from 'react-native';
+import { Platform, StyleSheet, Text, View } from 'react-native';
 import { StatusBar } from 'expo-status-bar';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { LogoMark } from '../../shared/brand/LogoMark';
 import { colors } from '../../shared/theme/colors';
 import { SocialLoginButton } from './components/SocialLoginButton';
-import type { SocialProvider } from './types';
+import { getAvailableProviders } from './social/providers';
+import type { AuthSession, SocialProvider } from './types';
+import { useSocialLogin } from './useSocialLogin';
 
-const PROVIDERS: SocialProvider[] = ['kakao', 'apple', 'google'];
+const PROVIDERS = getAvailableProviders(Platform.OS);
 
 type Props = {
-  onLogin: (provider: SocialProvider) => void;
+  onAuthenticated: (session: AuthSession) => void;
   lastUsedProvider?: SocialProvider | null;
-  loadingProvider?: SocialProvider | null;
   onPressTerms?: () => void;
   onPressPrivacy?: () => void;
 };
 
 export function LoginScreen({
-  onLogin,
+  onAuthenticated,
   lastUsedProvider = null,
-  loadingProvider = null,
   onPressTerms,
   onPressPrivacy,
 }: Props) {
   const insets = useSafeAreaInsets();
+  const { loadingProvider, errorMessage, signIn } =
+    useSocialLogin(onAuthenticated);
   const isBusy = loadingProvider !== null;
 
   return (
@@ -48,11 +50,17 @@ export function LoginScreen({
       </View>
 
       <View style={styles.actions}>
+        {errorMessage && (
+          <Text style={styles.error} accessibilityRole="alert">
+            {errorMessage}
+          </Text>
+        )}
+
         {PROVIDERS.map((provider) => (
           <SocialLoginButton
             key={provider}
             provider={provider}
-            onPress={onLogin}
+            onPress={signIn}
             isRecent={provider === lastUsedProvider}
             isLoading={provider === loadingProvider}
             disabled={isBusy && provider !== loadingProvider}
@@ -108,6 +116,12 @@ const styles = StyleSheet.create({
   },
   actions: {
     gap: 12,
+  },
+  error: {
+    fontSize: 14,
+    lineHeight: 20,
+    textAlign: 'center',
+    color: colors.danger,
   },
   terms: {
     marginTop: 8,

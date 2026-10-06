@@ -6,7 +6,7 @@ type Props = {
   size?: number;
 };
 
-// TODO: 출시 전 각 사의 공식 배포 로고 에셋으로 교체 (카카오/Apple/Google 브랜드 가이드)
+// TODO: 출시 전 각 사의 공식 배포 로고 에셋으로 교체 (카카오/네이버/Google/Apple 브랜드 가이드)
 export function ProviderLogo({ provider, size = 20 }: Props) {
   switch (provider) {
     case 'kakao':
@@ -15,6 +15,15 @@ export function ProviderLogo({ provider, size = 20 }: Props) {
           <Path
             fill="#000000"
             d="M12 3C6.48 3 2 6.48 2 10.78c0 2.78 1.86 5.21 4.66 6.59l-.95 3.49c-.08.31.27.56.54.38l4.16-2.76c.52.07 1.05.11 1.59.11 5.52 0 10-3.48 10-7.81S17.52 3 12 3z"
+          />
+        </Svg>
+      );
+    case 'naver':
+      return (
+        <Svg width={size} height={size} viewBox="0 0 24 24">
+          <Path
+            fill="#FFFFFF"
+            d="M15.56 12.84 8.2 2.25H2.25v19.5h6.19V11.16l7.36 10.59h5.95V2.25h-6.19z"
           />
         </Svg>
       );

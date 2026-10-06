@@ -1,6 +1,6 @@
 # Later 서비스 구성
 
-현재 `feat/auth`에서 구현된 서버 구성을 기준으로 한다. 모바일은 연결 상대를 나타내며 이번 작업에서 구현·검증하지 않았다. 운영 서버 주소, 인스턴스 수, 클라우드 사업자와 실제 배포 상태는 확인하지 않았다. 서비스 규칙은 [서비스 정책](service-policy.md), 개선 과제는 [Auth 운영 점검](auth-operational-review.md)을 따른다.
+현재 `feat/auth`에서 구현된 서버 구성을 기준으로 한다. 모바일의 연결 방식은 [모바일 클라이언트](#모바일-클라이언트-featmobileauth) 절에 정리했다. 운영 서버 주소, 인스턴스 수, 클라우드 사업자와 실제 배포 상태는 확인하지 않았다. 서비스 규칙은 [서비스 정책](service-policy.md), 개선 과제는 [Auth 운영 점검](auth-operational-review.md)을 따른다.
 
 ## 전체 연결
 
@@ -52,6 +52,16 @@ JWT 검증 후 보호 API는 PostgreSQL에서 회원 존재 여부도 확인한�
 2. **보호 API:** JWT를 검증하고 PostgreSQL에서 회원 존재를 확인한다. 본인 소셜 목록 조회·연동·탈퇴 유스케이스로 연결한다. 연동은 기존 회원에 검증된 제공자 계정을 추가한다.
 3. **갱신·로그아웃:** Redis 요청 제한 뒤 PostgreSQL 세션/토큰 상태를 검사하고 회전 또는 폐기한다. 갱신 시 새 JWT를 발급한다.
 4. **탈퇴·만료 정리:** 탈퇴는 회원과 연결된 데이터를 PostgreSQL cascade로 삭제한다. 만료 정리는 API 내부 스케줄러가 배치별 트랜잭션으로 반복 수행한다. AuthSession(expiresAt,id) 인덱스가 정리를, Apple/Naver(ownerUserId) 인덱스가 탈퇴 시 소유자 조회를 지원한다. Redis 제한 키는 TTL로 자동 삭제되어 해당 정리 작업에 의존하지 않는다.
+
+## 모바일 클라이언트 (feat/mobile/auth)
+
+Expo/React Native 앱(`apps/mobile`)은 `EXPO_PUBLIC_API_BASE_URL`의 API에 HTTP로 연결한다. 개발 빌드만 http를 허용하며 운영 HTTPS 주소와 release 빌드 설정은 미정이다.
+
+- 제공자 연결: 카카오·Google은 네이티브 SDK로 받은 토큰, Apple은 서버 nonce로 받은 ID Token을 `POST /auth/social/login`에 보낸다. 네이버는 앱 SDK 없이 서버 authorizationUrl을 인증 브라우저(expo-web-browser)로 열고 `kr.pe.hoe.later://auth/naver` 딥링크로 돌아온다.
+- 저장: 서비스 Access/Refresh Token은 기기 보안 저장소(expo-secure-store)에만 둔다. 앱은 별도 로컬 DB를 사용하지 않는다.
+- 세션 흐름: 앱 시작 시 `GET /auth/me`로 복원하고, Bearer 요청의 `401`은 `POST /auth/token/refresh` 한 번(직렬화) 후 재시도한다. 로그아웃은 `POST /auth/logout`, 탈퇴는 `DELETE /users/me`.
+
+근거: [API 클라이언트](../apps/mobile/src/shared/api/apiClient.ts), [인증 요청](../apps/mobile/src/features/auth/session/authorizedRequest.ts), [앱 상태](../apps/mobile/src/features/auth/session/useAuthSession.ts).
 
 수명·제한 횟수·재사용 탐지·삭제 예외는 중복 정의하지 않고 [서비스 정책](service-policy.md)을 따른다.
 

@@ -3,18 +3,30 @@
   "version": "1.0.0",
   "main": "index.ts",
   "dependencies": {
+    "@react-native-google-signin/google-signin": "^16.1.5",
+    "@react-native-seoul/kakao-login": "^6.0.4",
     "expo": "~57.0.25",
+    "expo-apple-authentication": "~57.0.2",
+    "expo-build-properties": "~57.0.22",
     "expo-dev-client": "~57.0.19",
+    "expo-secure-store": "~57.0.4",
     "expo-sharing": "~57.0.22",
     "expo-splash-screen": "~57.0.9",
     "expo-status-bar": "~57.0.1",
+    "expo-web-browser": "~57.0.3",
     "react": "19.2.3",
     "react-native": "0.86.3",
     "react-native-safe-area-context": "~5.7.0",
     "react-native-svg": "15.15.4"
   },
   "devDependencies": {
+    "@react-native/jest-preset": "~0.86.3",
+    "@testing-library/react-native": "^14.0.1",
+    "@types/jest": "^29.5.14",
     "@types/react": "~19.2.2",
+    "jest": "^29.7.0",
+    "jest-expo": "~57.0.5",
+    "test-renderer": "1.0.0",
     "typescript": "~6.0.3"
   },
   "scripts": {
@@ -26,7 +38,11 @@
     "dev:android": "expo run:android",
     "dev:ios": "expo run:ios",
     "prebuild:android": "expo prebuild --platform android",
-    "prebuild:ios": "expo prebuild --platform ios"
+    "prebuild:ios": "expo prebuild --platform ios",
+    "test": "jest"
   },
-  "private": true
+  "private": true,
+  "jest": {
+    "preset": "jest-expo"
+  }
 }

@@ -13,8 +13,14 @@ import { StatusBar } from 'expo-status-bar';
 import LaterShare, {
   type SharedItem,
 } from '../../../modules/later-share/src/LaterShareModule';
+import { AccountActions } from '../auth/components/AccountActions';
 
-export function SharePocScreen() {
+type Props = {
+  onLogout: () => void;
+  onWithdraw: () => Promise<boolean>;
+};
+
+export function SharePocScreen({ onLogout, onWithdraw }: Props) {
   const [items, setItems] = useState<SharedItem[]>([]);
 
   async function refresh() {
@@ -60,6 +66,7 @@ export function SharePocScreen() {
 
       <Button title="저장 알림 허용" onPress={enableNotifications} />
       <Button title="목록 새로고침" onPress={refresh} />
+      <AccountActions onLogout={onLogout} onWithdraw={onWithdraw} />
 
       {items.length === 0 && <Text>아직 저장한 내용이 없어요.</Text>}
 

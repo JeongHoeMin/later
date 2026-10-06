@@ -3,11 +3,14 @@
     "name": "나중에",
     "slug": "mobile",
     "version": "1.0.0",
+    "scheme": "kr.pe.hoe.later",
     "orientation": "portrait",
     "icon": "./assets/icon.png",
     "userInterfaceStyle": "light",
     "ios": {
-      "supportsTablet": true
+      "supportsTablet": true,
+      "bundleIdentifier": "kr.pe.hoe.later",
+      "usesAppleSignIn": true
     },
     "android": {
       "adaptiveIcon": {
@@ -17,7 +20,7 @@
         "monochromeImage": "./assets/android-icon-monochrome.png"
       },
       "predictiveBackGestureEnabled": false,
-      "package": "com.anonymous.mobile"
+      "package": "kr.pe.hoe.later"
     },
     "web": {
       "favicon": "./assets/favicon.png"
@@ -39,6 +42,17 @@
           "backgroundColor": "#111827",
           "image": "./assets/splash-icon.png",
           "imageWidth": 120
+        }
+      ],
+      "expo-apple-authentication",
+      [
+        "expo-build-properties",
+        {
+          "android": {
+            "extraMavenRepos": [
+              "https://devrepo.kakao.com/nexus/content/groups/public/"
+            ]
+          }
         }
       ]
     ]

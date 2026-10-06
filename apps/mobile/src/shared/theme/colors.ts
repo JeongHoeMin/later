@@ -4,4 +4,5 @@ export const colors = {
   white: '#FFFFFF',
   textMuted: '#9CA3AF',
   textSubtle: '#6B7280',
+  danger: '#F87171',
 } as const;

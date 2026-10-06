@@ -120,4 +120,19 @@ IP 제한은 인증·본문 검증·외부 인증·시도 소비 전에 검사�
 
 이전 요청 제한 테이블 migration은 격리 `later_test`에서 검증했다. Redis 전환은 새 migration 없이 DI 저장소를 변경하며 기존 테이블과 migration 이력을 보존한다. 운영 적용 전 공유 Redis와 REDIS_URL, 새 서버 배포, 기존 미적용 migration의 `prisma migrate deploy`, 실제 프록시 허용 목록 설정이 필요하다. 정리/연동 조회 인덱스 추가 migration도 격리 later_test에서 검증했다. 일반 CREATE INDEX는 생성 중 쓰기를 막을 수 있으므로 운영 데이터량과 작업 시간을 검토해 적용한다. 이번 작업에서 개발·운영 DB, 모바일, 배포는 변경하지 않았다.
 
+### 모바일 앱 적용 상태 (feat/mobile/auth, 2026-10-06)
+
+모바일은 위 서버 정책을 따르는 클라이언트이며 별도 정책을 추가하지 않는다. 코드로 확인한 적용 범위:
+
+- 가입: 별도 가입 화면·입력 없이 첫 소셜 로그인이 가입이다. 로그인 화면에 이용약관·개인정보처리방침 동의 간주 문구가 있으나 문서 링크는 아직 연결되지 않았다.
+- 제공자: Android는 카카오·네이버·Google, iOS는 Apple을 추가로 표시한다. Android Apple 로그인은 미지원이다.
+- 토큰: Access/Refresh Token을 플랫폼 보안 저장소(expo-secure-store)에 보관하고 로그에 남기지 않는다.
+- 앱 복원: 저장된 Refresh Token이 있으면 시작 시 `GET /auth/me`로 회원을 확인한다. 갱신 `401`이면 로컬 토큰을 지우고 로그인 화면, 네트워크·5xx·429면 토큰을 유지하고 재시도 화면을 표시한다.
+- 갱신: 인증 요청이 `401`이면 `POST /auth/token/refresh`를 한 번만(동시 요청도 하나로 직렬화) 호출하고 원 요청을 한 번 재시도한다. 갱신 거부 또는 재시도 `401`이면 세션 만료로 로그인 화면으로 돌아간다.
+- 로그아웃: 서버 폐기 결과와 관계없이 로컬 토큰을 지운다. 서버 폐기 실패 시 세션은 만료까지 남는다.
+- 탈퇴: 확인 대화상자 동의 후 `DELETE /users/me`. `204` 또는 이미 만료·탈퇴(`401`)면 로컬 토큰을 지우고 로그인 화면, 그 외 오류는 토큰을 유지하고 재시도 안내를 표시한다.
+- 실제 기기와 실제 제공자 계정의 수동 확인은 관련 Task verification을 따른다.
+
+근거: [인증 요청](../apps/mobile/src/features/auth/session/authorizedRequest.ts), [앱 복원](../apps/mobile/src/features/auth/session/restoreSession.ts), [탈퇴](../apps/mobile/src/features/auth/session/withdraw.ts), [로그인](../apps/mobile/src/features/auth/loginWithProvider.ts).
+
 정책을 바꾸는 구현은 이 파일에서 수치·조건·예외·오류·미지원 범위를 수정하고 관련 Task의 progress/verification에 갱신 항목을 기록한다. 구현과 문서를 같은 변경 세트로 검증한다. 상세 입력 계약은 [HTTP 계약](../apps/api/src/auth/presentation/http/README.md)과 실행 서버의 [OpenAPI](openapi.md)를 따른다.
