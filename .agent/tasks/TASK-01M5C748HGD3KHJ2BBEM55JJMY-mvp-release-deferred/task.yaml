@@ -1,0 +1,11 @@
+id: TASK-01M5C748HGD3KHJ2BBEM55JJMY
+title: 'MVP 출시·운영 준비 기준 보류'
+parent: TASK-01M47D4T94METY4JTEJPDYVC8X
+status: pending
+phase: requirement
+priority: normal
+created_at: 2026-10-20T17:33:57+09:00
+updated_at: 2026-10-20T17:33:57+09:00
+current_summary: '보류: 사용자와 출시 기준 논의 재개 후 설계한다. 날짜/운영 적용/심사 완료를 추정하지 않는다.'
+next_action: 'requirement.md의 R1/AC와 기존 관련 Task를 확인하고 사용자와 미확정 범위 및 구현 착수 시점을 정한다.'
+blocked_by: null

@@ -1,0 +1,11 @@
+id: TASK-01M5C748H8FX3F488QGN9N6V03
+title: '모바일 공유·로그인 재개와 전송 예외 설계'
+parent: TASK-01M47D4T94METY4JTEJPDYVC8X
+status: pending
+phase: requirement
+priority: normal
+created_at: 2026-10-20T17:33:57+09:00
+updated_at: 2026-10-20T17:33:57+09:00
+current_summary: 'Android/iOS를 분리한다. 이미 있는 인증/공유 Task와 중복 구현하지 않고 연결한다.'
+next_action: 'requirement.md의 R1/AC와 기존 관련 Task를 확인하고 사용자와 미확정 범위 및 구현 착수 시점을 정한다.'
+blocked_by: null

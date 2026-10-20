@@ -1,0 +1,11 @@
+id: TASK-01M5C748HD613WHE1EFYRN8T2Z
+title: '구독·결제·AI 분석권 상세 설계 보류'
+parent: TASK-01M47D4T94METY4JTEJPDYVC8X
+status: pending
+phase: requirement
+priority: normal
+created_at: 2026-10-20T17:33:57+09:00
+updated_at: 2026-10-20T17:33:57+09:00
+current_summary: '보류: 사용자가 구독 기능 개발을 시작할 때 재개한다. 지금 상세 정책을 결정하거나 결제 상품을 등록하지 않는다.'
+next_action: 'requirement.md의 R1/AC와 기존 관련 Task를 확인하고 사용자와 미확정 범위 및 구현 착수 시점을 정한다.'
+blocked_by: null
